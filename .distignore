@@ -1,0 +1,33 @@
+# Files to exclude from the WordPress.org plugin zip.
+# Used by `wp-scripts plugin-zip` (via package.json's "files" allowlist too).
+
+node_modules/
+.git/
+.github/
+.gitignore
+.distignore
+.DS_Store
+.vscode/
+.cache/
+coverage/
+tests/
+*.log
+
+# Config / tooling not needed at runtime
+package.json
+package-lock.json
+pnpm-lock.yaml
+pnpm-workspace.yaml
+webpack.config.js
+postcss.config.js
+phpcs.xml.dist
+phpstan.neon.dist
+phpunit.xml.dist
+tsconfig.json
+composer.json
+composer.lock
+
+# Developer docs (wp.org rendering uses readme.txt)
+CLAUDE.md
+README.md
+docs/
