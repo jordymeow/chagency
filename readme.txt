@@ -29,6 +29,8 @@ That's it. **No bundled AI vendor SDKs, no third-party JavaScript libraries beyo
 
 You will need at least one AI provider plugin (e.g. *AI Provider for Anthropic*, *AI Provider for Google*, or *AI Provider for OpenAI*) to talk to a model. That's WordPress 7's architecture — providers are separate plugins that register a Connector, not a Chagency dependency.
 
+💡 **Tip:** For the smoothest setup, install [AI Engine](https://wordpress.org/plugins/ai-engine/) — it registers every AI provider it manages as a Connector, so a single configuration covers all your WordPress 7 AI plugins (including Chagency). Every request then flows through one clean, unified system.
+
 == 🪄 What you get ==
 
 * A floating chat panel pinned to the bottom-right of every admin page — one click, start typing.
@@ -42,7 +44,7 @@ You will need at least one AI provider plugin (e.g. *AI Provider for Anthropic*,
 == 🚀 Getting started ==
 
 1. Install and activate **Chagency**.
-2. Install and configure at least one AI provider plugin under **Settings → Connectors**.
+2. Install and configure at least one AI provider plugin under **Settings → Connectors** (we recommend [AI Engine](https://wordpress.org/plugins/ai-engine/), which exposes all its providers as Connectors at once).
 3. Click the **Chagency** launcher in the bottom-right of any admin page and start talking.
 
 Tune defaults under **Settings → Chagency**. Everything is reversible; nothing is precious.

@@ -152,8 +152,14 @@ This plugin is a good place to verify how the WP 7 AI APIs behave:
 - PHP **7.4+**.
 - At least one Connector installed and configured — the chatbot tells you if there is none.
 
+### 💡 Recommended companion: AI Engine
+
+For the smoothest setup, install [**AI Engine**](https://wordpress.org/plugins/ai-engine/). AI Engine registers every AI provider it manages (OpenAI, Anthropic, Google, Mistral, Anthropic-compatible endpoints, local models, …) as a WordPress 7 Connector — so a single configuration covers Chagency *and* every other plugin built on `wp_get_connectors()`. Every request then flows through one clean, unified provider system instead of duplicate API keys scattered across one Connector plugin per vendor.
+
+Chagency itself does not depend on AI Engine in any way — it works with the official `AI Provider for Anthropic` / `AI Provider for OpenAI` / etc. plugins just as well. AI Engine is just the most ergonomic option if you already manage AI on the site.
+
 ## Status
 
-**v0.4.0 — structurally aligned with [WordPress/ai](https://github.com/WordPress/ai) and readied for wordpress.org submission.** See [`docs/CHANGELOG.md`](docs/CHANGELOG.md) for the per-version history, [`docs/WP7-AI-FRAMEWORK.md`](docs/WP7-AI-FRAMEWORK.md) for the framework crib sheet, and [`CLAUDE.md`](CLAUDE.md) for the rules that keep this plugin from growing heavy.
+**v0.0.1 — initial release, pending wordpress.org review.** See [`docs/CHANGELOG.md`](docs/CHANGELOG.md) for the per-version history, [`docs/WP7-AI-FRAMEWORK.md`](docs/WP7-AI-FRAMEWORK.md) for the framework crib sheet, and [`CLAUDE.md`](CLAUDE.md) for the rules that keep this plugin from growing heavy.
 
 Build small. Keep it honest. Delete first.
