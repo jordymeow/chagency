@@ -10,7 +10,7 @@
  * @wordpress-plugin
  * Plugin Name:       Chagency
  * Description:       A chatbot today, an agent tomorrow, built natively on the WordPress 7 AI framework, with zero third-party plugin requirements.
- * Version: 0.0.1
+ * Version: 0.0.2
  * Requires at least: 7.0
  * Requires PHP:      7.4
  * Author:            Jordy Meow
@@ -36,7 +36,7 @@ function constants(): void {
 		define( 'CHAGENCY_PLUGIN_FILE', __FILE__ );
 	}
 	if ( ! defined( 'CHAGENCY_VERSION' ) ) {
-		define( 'CHAGENCY_VERSION', '0.0.1' );
+		define( 'CHAGENCY_VERSION', '0.0.2' );
 	}
 	if ( ! defined( 'CHAGENCY_PLUGIN_DIR' ) ) {
 		define( 'CHAGENCY_PLUGIN_DIR', plugin_dir_path( CHAGENCY_PLUGIN_FILE ) );

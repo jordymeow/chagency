@@ -3,7 +3,7 @@ Contributors: TigrouMeow
 Tags: ai, chatbot, agent, assistant, abilities
 Requires at least: 7.0
 Tested up to: 7.0
-Stable tag: 0.0.1
+Stable tag: 0.0.2
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -90,6 +90,13 @@ To rebuild from source:
 The build is `@wordpress/scripts` (webpack) with no custom plugins or transforms.
 
 == Changelog ==
+
+= 0.0.2 (2026/05/15) =
+* Add: option to show the chat widget on the public site for all visitors
+* Add: configurable chat title in the Settings page
+* Add: chat panel stays open when navigating between admin pages
+* Update: launcher, chat panel, and Settings page styled to match the WP 7 AI plugin
+* 🌴 Keep us motivated with [a little review here](https://wordpress.org/support/plugin/chagency/reviews/). Thank you!
 
 = 0.0.1 =
 * Initial release.
