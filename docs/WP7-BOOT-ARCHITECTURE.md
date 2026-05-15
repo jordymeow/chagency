@@ -48,12 +48,12 @@ Connectors use. It:
 ```
 
 - `content_module` is a **script-module ID**. That module must `export`
-  `stage` — a React component. Boot dynamically imports the module when
+  `stage`, a React component. Boot dynamically imports the module when
   the route is active and renders `<stage />`.
 - `route_module` (optional) is another script-module that exports route
   lifecycle hooks (onEnter, onLeave, etc.).
 
-## CSS — automatic
+## CSS, automatic
 
 Boot's module, on load, injects **two `<style>` tags** into `<head>`:
 
@@ -101,12 +101,12 @@ tag on the page:
 ```
 
 WordPress produces this automatically from the `wp_register_script_module`
-calls — one entry per registered module. Dynamic `import('@wordpress/boot')`
+calls, one entry per registered module. Dynamic `import('@wordpress/boot')`
 resolves via this map.
 
 Modules whose content is compiled with `@wordpress/build` (esbuild) use
 the `package-external:@wordpress/name` convention for any `@wordpress/*`
-package that **isn't** also registered as a module — they get inlined as
+package that **isn't** also registered as a module, they get inlined as
 `window.wp.name` references, relying on a matching classic script handle
 being enqueued in `dependencies`.
 
@@ -160,7 +160,7 @@ wp_register_script_module(
 //    carry the wp-* dependencies and the inline boot-init call.
 wp_register_script(
     'my-plugin-settings-prerequisites',
-    false,                              // no URL — inline only
+    false,                              // no URL, inline only
     array( 'wp-element', 'wp-components', 'wp-i18n', 'wp-data', … ),
     '1.0',
     true
@@ -188,8 +188,8 @@ echo '<div id="my-plugin-root" class="boot-layout-container"></div>';
 ```
 
 The inline script runs after the classic prerequisites load, performs a
-**dynamic** `import('@wordpress/boot')` — which is resolved via the
-importmap — then calls `initSinglePage`. Boot's rendering pulls
+**dynamic** `import('@wordpress/boot')`, which is resolved via the
+importmap, then calls `initSinglePage`. Boot's rendering pulls
 `content_module` via its own dynamic import and mounts the stage.
 
 ## Chrome reset (what core's page.php also prints)
@@ -210,10 +210,10 @@ importmap — then calls `initSinglePage`. Boot's rendering pulls
 Everything else is `position:absolute` inside `.boot-layout`, so the old
 `.wrap` chrome is deliberately hidden.
 
-## Stage component — minimum viable
+## Stage component, minimum viable
 
 ```js
-// src/settings/content.js — becomes wp_register_script_module( 'my-plugin/settings/content', … )
+// src/settings/content.js, becomes wp_register_script_module( 'my-plugin/settings/content', … )
 import { Page } from '@wordpress/admin-ui';
 import { __ }   from '@wordpress/i18n';
 
@@ -232,7 +232,7 @@ export const stage = Settings;   // <-- boot calls this
 
 - `@wordpress/admin-ui` isn't reliably in `window.wp.adminUi` on every
   WP 7 build (confirmed on 7.0-RC2). Import it as an ES module from
-  within a script module — the importmap will resolve it via the
+  within a script module, the importmap will resolve it via the
   registered handle, **not** via the global.
 - `wp_register_script_module` silently drops a script if a declared
   dependency handle isn't registered. Double-check every `id` you
@@ -255,7 +255,7 @@ These two tripped us up; they're not in any docs we could find.
 ### 1. Enqueued modules are NOT in the import map
 
 `wp_enqueue_script_module($id)` emits the module as `<script type="module"
-src="...">` directly. WP's own code is explicit about this — inside
+src="...">` directly. WP's own code is explicit about this, inside
 `WP_Script_Modules::get_import_map()`:
 
 ```php
@@ -264,7 +264,7 @@ src="...">` directly. WP's own code is explicit about this — inside
 ```
 
 Result: if `@wordpress/boot` tries to `await import('your/module')`
-internally, the specifier won't resolve — it's not in the map.
+internally, the specifier won't resolve, it's not in the map.
 
 **Fix:** *don't* enqueue your module directly. Attach it as a
 `module_dependencies` entry on a **classic** prerequisites script you
@@ -297,7 +297,7 @@ later `import()` call hits the cache instead of re-resolving. The
 "failed to resolve" error disappears.
 
 This is surprising because the AI plugin ships with `dynamic` and works
-— probably their loader module's static deps are enough to prime the
+,  probably their loader module's static deps are enough to prime the
 cache before boot's `import()` runs. Using `static` directly is the
 more robust pattern for simple single-page setups.
 
@@ -321,12 +321,12 @@ array('react', 'react-dom', 'react-jsx-runtime', 'wp-commands',
 ```
 
 Symptom of a missing classic dep: `TypeError: Cannot read properties of
-undefined (reading 'name')` somewhere inside `wp-data`'s `select()` —
+undefined (reading 'name')` somewhere inside `wp-data`'s `select()` , 
 boot tried to read a store that was never registered.
 
 ## Unknowns / still to investigate
 
-- How `@wordpress/admin-ui` is actually served — is it a registered
+- How `@wordpress/admin-ui` is actually served, is it a registered
   script module on some builds? Only shipped inside `@wordpress/boot`'s
   bundle? Needs a fresh look at the Connectors importmap once we wire
   things up and can inspect in the browser.

@@ -3,11 +3,11 @@
  * REST endpoints for the Chagency plugin.
  *
  * Routes:
- *   POST /chagency/v1/chat        — generate a reply for a conversation
- *   POST /chagency/v1/test        — canary probe against a specific provider
- *   GET  /chagency/v1/connectors  — connector status (used by the React UI)
- *   GET  /chagency/v1/settings    — current settings
- *   POST /chagency/v1/settings    — persist new settings
+ *   POST /chagency/v1/chat       , generate a reply for a conversation
+ *   POST /chagency/v1/test       , canary probe against a specific provider
+ *   GET  /chagency/v1/connectors , connector status (used by the React UI)
+ *   GET  /chagency/v1/settings   , current settings
+ *   POST /chagency/v1/settings   , persist new settings
  *
  * @package Chagency
  */
@@ -23,10 +23,11 @@ use WP_REST_Request;
 use WP_REST_Response;
 use WP_REST_Server;
 
+use function Chagency\admin_permission_check;
+use function Chagency\chat_permission_check;
 use function Chagency\expand_placeholders;
 use function Chagency\get_plugin_settings;
 use function Chagency\list_connectors_status;
-use function Chagency\rest_permission_check;
 use function Chagency\sanitize_settings;
 
 defined( 'ABSPATH' ) || exit;
@@ -49,7 +50,7 @@ class Routes {
 	 * Registers every route.
 	 */
 	public static function register_routes(): void {
-		$permission = '\\Chagency\\rest_permission_check';
+		$admin = '\\Chagency\\admin_permission_check';
 
 		register_rest_route(
 			self::NAMESPACE,
@@ -58,7 +59,7 @@ class Routes {
 				array(
 					'methods'             => WP_REST_Server::CREATABLE,
 					'callback'            => array( self::class, 'handle_chat' ),
-					'permission_callback' => $permission,
+					'permission_callback' => '\\Chagency\\chat_permission_check',
 					'args'                => array(
 						'messages' => array(
 							'required'    => true,
@@ -84,7 +85,7 @@ class Routes {
 				array(
 					'methods'             => WP_REST_Server::CREATABLE,
 					'callback'            => array( self::class, 'handle_test' ),
-					'permission_callback' => $permission,
+					'permission_callback' => $admin,
 					'args'                => array(
 						'provider' => array(
 							'required'    => true,
@@ -103,7 +104,7 @@ class Routes {
 				array(
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => static fn(): WP_REST_Response => new WP_REST_Response( list_connectors_status() ),
-					'permission_callback' => $permission,
+					'permission_callback' => $admin,
 				),
 			)
 		);
@@ -115,14 +116,16 @@ class Routes {
 				array(
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => static fn(): WP_REST_Response => new WP_REST_Response( get_plugin_settings() ),
-					'permission_callback' => $permission,
+					'permission_callback' => $admin,
 				),
 				array(
 					'methods'             => WP_REST_Server::EDITABLE,
 					'callback'            => array( self::class, 'handle_save_settings' ),
-					'permission_callback' => $permission,
+					'permission_callback' => $admin,
 					'args'                => array(
-						'enabled'            => array( 'type' => 'boolean' ),
+						'admin_enabled'      => array( 'type' => 'boolean' ),
+						'frontend_enabled'   => array( 'type' => 'boolean' ),
+						'chat_title'         => array( 'type' => 'string' ),
 						'system_instruction' => array( 'type' => 'string' ),
 						'greeting'           => array( 'type' => 'string' ),
 						'model_preference'   => array( 'type' => 'string' ),
@@ -131,7 +134,7 @@ class Routes {
 				array(
 					'methods'             => WP_REST_Server::DELETABLE,
 					'callback'            => array( self::class, 'handle_reset_settings' ),
-					'permission_callback' => $permission,
+					'permission_callback' => $admin,
 				),
 			)
 		);
@@ -267,7 +270,9 @@ class Routes {
 	 */
 	public static function handle_save_settings( WP_REST_Request $request ): WP_REST_Response {
 		$input = array(
-			'enabled'            => (bool) $request->get_param( 'enabled' ),
+			'admin_enabled'      => (bool) $request->get_param( 'admin_enabled' ),
+			'frontend_enabled'   => (bool) $request->get_param( 'frontend_enabled' ),
+			'chat_title'         => (string) $request->get_param( 'chat_title' ),
 			'system_instruction' => (string) $request->get_param( 'system_instruction' ),
 			'greeting'           => (string) $request->get_param( 'greeting' ),
 			'model_preference'   => (string) $request->get_param( 'model_preference' ),

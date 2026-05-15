@@ -15,7 +15,6 @@ declare( strict_types=1 );
 namespace Chagency;
 
 use Chagency\Abilities\Registrar as Abilities_Registrar;
-use Chagency\Admin\Widget_Loader;
 use Chagency\REST\Routes;
 use Chagency\Settings\Settings_Page;
 use Chagency\Settings\Settings_Registration;

@@ -17,12 +17,11 @@ defined( 'ABSPATH' ) || exit;
 const OPTION_KEY = 'chagency_settings';
 
 /**
- * Default system instruction. Uses the plugin's placeholder vocabulary so the
- * bot always knows who it is, who the user is, and where they are.
+ * Default system instruction.
  */
 function default_system_instruction(): string {
 	return __(
-		"You are a helpful WordPress assistant embedded in the WordPress admin. You are talking to {user_name} ({user_role}) on the site \"{site_name}\". The user is currently viewing: {current_page}.\n\nBe concise and direct. When referencing WordPress screens, use their full menu path (e.g. \"Settings → Writing\"). If you are not certain of something, say so.",
+		"You are a helpful assistant for the site \"{site_name}\". You are talking to {user_name}, currently viewing: {current_page}.\n\nBe concise and direct. If you are not certain of something, say so.",
 		'chagency'
 	);
 }
@@ -31,7 +30,31 @@ function default_system_instruction(): string {
  * Default greeting.
  */
 function default_greeting(): string {
-	return __( "Hi! I'm your WordPress assistant. Ask me anything!", 'chagency' );
+	return __( "Hi! How can I help?", 'chagency' );
+}
+
+/**
+ * Default chat title shown in the panel header and on the launcher tooltip.
+ * Kept neutral on purpose so it suits any site.
+ */
+function default_chat_title(): string {
+	return __( 'Assistant', 'chagency' );
+}
+
+/**
+ * Returns the default settings shape.
+ *
+ * @return array{admin_enabled:bool,frontend_enabled:bool,chat_title:string,system_instruction:string,greeting:string,model_preference:string}
+ */
+function default_settings(): array {
+	return array(
+		'admin_enabled'      => true,
+		'frontend_enabled'   => false,
+		'chat_title'         => default_chat_title(),
+		'system_instruction' => default_system_instruction(),
+		'greeting'           => default_greeting(),
+		'model_preference'   => 'auto',
+	);
 }
 
 /**
@@ -39,25 +62,20 @@ function default_greeting(): string {
  *
  * Named `get_plugin_settings()` rather than `get_settings()` to avoid
  * a name collision with WordPress core's long-deprecated `get_settings()`
- * function — Plugin Check flags any `get_settings()` call regardless of
+ * function. Plugin Check flags any `get_settings()` call regardless of
  * namespace.
  *
- * @return array{enabled:bool,system_instruction:string,greeting:string,model_preference:string}
+ * @return array{admin_enabled:bool,frontend_enabled:bool,chat_title:string,system_instruction:string,greeting:string,model_preference:string}
  */
 function get_plugin_settings(): array {
-	$defaults = array(
-		'enabled'            => false,
-		'system_instruction' => default_system_instruction(),
-		'greeting'           => default_greeting(),
-		'model_preference'   => 'auto',
-	);
 	$stored = get_option( OPTION_KEY, array() );
 	if ( ! is_array( $stored ) ) {
 		$stored = array();
 	}
-	$out = array_merge( $defaults, $stored );
+	$out = array_merge( default_settings(), $stored );
 
-	$out['enabled']          = (bool) $out['enabled'];
+	$out['admin_enabled']    = (bool) $out['admin_enabled'];
+	$out['frontend_enabled'] = (bool) $out['frontend_enabled'];
 	$out['model_preference'] = is_string( $out['model_preference'] ) && '' !== $out['model_preference']
 		? $out['model_preference']
 		: 'auto';
@@ -75,7 +93,11 @@ function sanitize_settings( $input ): array {
 	$input = is_array( $input ) ? $input : array();
 	$out   = array();
 
-	$out['enabled'] = ! empty( $input['enabled'] );
+	$out['admin_enabled']    = ! empty( $input['admin_enabled'] );
+	$out['frontend_enabled'] = ! empty( $input['frontend_enabled'] );
+
+	$title = isset( $input['chat_title'] ) ? sanitize_text_field( (string) $input['chat_title'] ) : '';
+	$out['chat_title'] = '' !== $title ? $title : default_chat_title();
 
 	$system = isset( $input['system_instruction'] ) ? sanitize_textarea_field( (string) $input['system_instruction'] ) : '';
 	$out['system_instruction'] = '' !== $system ? $system : default_system_instruction();
@@ -91,46 +113,43 @@ function sanitize_settings( $input ): array {
 
 /**
  * Returns the complete list of placeholder substitutions the plugin supports.
- * The keys are the display names shown in the Settings UI; the values are the
- * actual `{placeholder}` tokens they expand into.
  *
  * @return array<string,string>
  */
 function supported_placeholders(): array {
 	return array(
-		'{user_name}'    => __( 'Display name of the current user.', 'chagency' ),
-		'{user_login}'   => __( 'Login handle of the current user.', 'chagency' ),
-		'{user_role}'    => __( 'Primary role (administrator, editor, etc.).', 'chagency' ),
-		'{site_name}'    => __( 'Site title as set under Settings → General.', 'chagency' ),
+		'{user_name}'    => __( 'Display name of the current user (or "there" for visitors).', 'chagency' ),
+		'{user_role}'    => __( 'Primary role (administrator, editor, subscriber, visitor).', 'chagency' ),
+		'{site_name}'    => __( 'Site title.', 'chagency' ),
 		'{site_url}'     => __( 'Site home URL.', 'chagency' ),
-		'{current_page}' => __( 'Title of the admin page the user is currently viewing.', 'chagency' ),
-		'{current_url}'  => __( 'URL path of the admin page the user is currently viewing.', 'chagency' ),
+		'{current_page}' => __( 'Title of the page the user is currently viewing.', 'chagency' ),
+		'{current_url}'  => __( 'URL path of the page the user is currently viewing.', 'chagency' ),
 	);
 }
 
 /**
  * Expands placeholder tokens in a system instruction.
  *
- * @param string                                $template     Raw system instruction.
+ * @param string                                 $template     Raw system instruction.
  * @param array{title?:string,path?:string}|null $page_context Optional page context from the client.
  * @return string
  */
 function expand_placeholders( string $template, ?array $page_context = null ): string {
-	$user  = wp_get_current_user();
-	$roles = array();
-	if ( $user && is_array( $user->roles ) ) {
-		$roles = $user->roles;
-	}
+	$user         = wp_get_current_user();
+	$is_logged_in = $user && $user->ID > 0;
+	$roles        = $is_logged_in && is_array( $user->roles ) ? $user->roles : array();
 	$primary_role = ! empty( $roles ) ? (string) $roles[0] : __( 'visitor', 'chagency' );
 
-	$display = $user && ! empty( $user->display_name ) ? (string) $user->display_name : ( $user ? (string) $user->user_login : '' );
+	$display = '';
+	if ( $is_logged_in ) {
+		$display = ! empty( $user->display_name ) ? (string) $user->display_name : (string) $user->user_login;
+	}
 
 	$title = isset( $page_context['title'] ) && is_string( $page_context['title'] ) ? sanitize_text_field( $page_context['title'] ) : '';
 	$path  = isset( $page_context['path'] )  && is_string( $page_context['path'] )  ? sanitize_text_field( $page_context['path'] )  : '';
 
 	$replacements = array(
 		'{user_name}'    => '' !== $display ? $display : __( 'there', 'chagency' ),
-		'{user_login}'   => $user ? (string) $user->user_login : '',
 		'{user_role}'    => $primary_role,
 		'{site_name}'    => (string) get_bloginfo( 'name' ),
 		'{site_url}'     => home_url(),
@@ -219,18 +238,32 @@ function list_connectors_status(): array {
 }
 
 /**
- * REST permission check — same bar as managing Connectors.
+ * Admin permission check. Used by Settings, Providers test, etc.
  */
-function rest_permission_check(): bool {
+function admin_permission_check(): bool {
 	return current_user_can( 'manage_options' );
 }
 
 /**
- * Returns a stable conversation storage key tied to the current user.
- * The JS widget uses this as the localStorage key so each admin user has
- * their own history.
+ * Chat permission check. Open to everyone when the front-end widget is on,
+ * otherwise admin-only.
+ */
+function chat_permission_check(): bool {
+	if ( current_user_can( 'manage_options' ) ) {
+		return true;
+	}
+	$settings = get_plugin_settings();
+	return ! empty( $settings['frontend_enabled'] );
+}
+
+/**
+ * Returns a stable conversation storage key.
+ * Logged-in users get a per-user key. Visitors share a per-site anonymous key.
  */
 function conversation_storage_key(): string {
 	$user_id = get_current_user_id();
-	return 'chagency:conversation:' . intval( $user_id );
+	if ( $user_id > 0 ) {
+		return 'chagency:conversation:user:' . intval( $user_id );
+	}
+	return 'chagency:conversation:guest';
 }

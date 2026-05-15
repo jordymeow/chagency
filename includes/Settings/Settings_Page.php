@@ -2,7 +2,7 @@
 /**
  * Settings → Chagency admin page.
  *
- * This page is rendered by the `@wordpress/boot` script-module system —
+ * This page is rendered by the `@wordpress/boot` script-module system , 
  * the same framework Settings → Connectors uses. See
  * `docs/WP7-BOOT-ARCHITECTURE.md` for the full writeup.
  *

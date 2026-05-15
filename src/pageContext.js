@@ -8,7 +8,7 @@
 export function getPageContext() {
 	try {
 		const rawTitle = document.title || '';
-		// Strip trailing "‹ Site Name — WordPress" to keep the placeholder tight.
+		// Strip trailing "‹ Site Name, WordPress" to keep the placeholder tight.
 		const title = rawTitle.replace( /\s*[‹<]\s.*$/, '' ).trim();
 		return {
 			title,

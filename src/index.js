@@ -1,11 +1,11 @@
 /**
- * Chagency — classic script entry point (the floating widget).
+ * Chagency, classic script entry point (the floating widget).
  *
  * Mounts the <Widget /> component on `#chagency-widget-root`, which is
  * printed into the admin footer by `Widget_Loader` whenever the current
  * user has `manage_options` and at least one AI provider is configured.
  *
- * The Settings → Chagency page does NOT use this bundle — it uses the
+ * The Settings → Chagency page does NOT use this bundle, it uses the
  * `wordpress/boot` script-module system (see src/settings/).
  *
  * @package

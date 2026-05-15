@@ -1,47 +1,31 @@
 /**
- * Floating chat widget.
- *
- * Renders as a small round button in the bottom-right of every admin page
- * (when enabled). Clicking it opens a compact chat panel — compact enough
- * that bubbles are the right visual choice here, even though the full-page
- * app uses flat typography. Conversation history is shared with the
- * full-page app via `useConversation`.
+ * Floating chat widget, works on both the WordPress admin and the public
+ * site. The PHP loader passes `cfg.surface` ("admin" | "frontend") and the
+ * widget reads the matching `enabled` flag from the settings.
  *
  * @package
  */
 
-import { Button, TextareaControl } from '@wordpress/components';
-import { useDispatch } from '@wordpress/data';
 import { useCallback, useEffect, useRef, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
-import { store as noticesStore } from '@wordpress/notices';
 import Markdown from 'markdown-to-jsx';
 
 import { sendChat } from './rest';
 import useConversation from './useConversation';
 
 /**
- * Shared `markdown-to-jsx` options. `disableParsingRawHTML` prevents the
- * model from smuggling raw HTML/`<script>` tags into the chat. Links open
- * in a new tab with `noopener`.
+ * Markdown options for assistant replies. `disableParsingRawHTML` blocks
+ * the model from smuggling raw HTML / `<script>` tags into the chat.
  */
 const MARKDOWN_OPTIONS = {
 	disableParsingRawHTML: true,
 	overrides: {
 		a: {
-			props: {
-				target: '_blank',
-				rel: 'noopener noreferrer',
-			},
+			props: { target: '_blank', rel: 'noopener noreferrer' },
 		},
 	},
 };
 
-/**
- * Animated "typing" indicator — three dots pulsing in sequence. Replaces
- * the Gutenberg Spinner here because Spinner's default rendering is a bit
- * loud for a chat bubble and its ARIA label is localized per site.
- */
 function TypingDots() {
 	return (
 		<span
@@ -55,45 +39,81 @@ function TypingDots() {
 	);
 }
 
-/**
- * Launcher — soft-gradient flush-to-bottom tab. Shows the green status dot,
- * "AI Chagency" label, and a red round badge when there are unread messages.
- *
- * @param {{ onOpen: () => void, unreadCount: number, busy: boolean }} props
- */
-function Launcher( { onOpen, unreadCount, busy } ) {
+function ChatIcon() {
+	return (
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			viewBox="0 0 24 24"
+			width="22"
+			height="22"
+			aria-hidden="true"
+		>
+			<path
+				fill="currentColor"
+				d="M12 3C6.48 3 2 6.86 2 11.6c0 2.5 1.27 4.74 3.32 6.32V21l3.6-2.04c.99.21 2.02.32 3.08.32 5.52 0 10-3.86 10-8.6S17.52 3 12 3z"
+			/>
+		</svg>
+	);
+}
+
+function CloseIcon() {
+	return (
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			viewBox="0 0 20 20"
+			width="18"
+			height="18"
+			aria-hidden="true"
+		>
+			<path
+				fill="currentColor"
+				d="M14.7 5.3a1 1 0 0 0-1.4 0L10 8.59 6.7 5.3A1 1 0 0 0 5.3 6.7L8.59 10 5.3 13.3a1 1 0 1 0 1.4 1.4L10 11.41l3.3 3.29a1 1 0 0 0 1.4-1.4L11.41 10l3.29-3.3a1 1 0 0 0 0-1.4z"
+			/>
+		</svg>
+	);
+}
+
+function SendIcon() {
+	return (
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			viewBox="0 0 24 24"
+			width="18"
+			height="18"
+			aria-hidden="true"
+		>
+			<path
+				fill="currentColor"
+				d="M3.4 20.4 21 12 3.4 3.6c-.7-.3-1.5.4-1.3 1.2L4 11l11 1-11 1-1.9 6.2c-.2.8.6 1.5 1.3 1.2z"
+			/>
+		</svg>
+	);
+}
+
+function Launcher( { onOpen, unreadCount, label } ) {
 	const hasUnread = unreadCount > 0;
-	const className = [
-		'chagency-widget-launcher',
-		busy ? 'is-busy' : '',
-		hasUnread ? 'has-unread' : '',
-	]
-		.filter( Boolean )
-		.join( ' ' );
+	const aria = hasUnread
+		? __( 'Open chat, new messages', 'chagency' )
+		: label || __( 'Open chat', 'chagency' );
 	return (
 		<button
 			type="button"
-			className={ className }
-			onClick={ onOpen }
-			aria-label={
+			className={
 				hasUnread
-					? __( 'Open chat — new messages', 'chagency' )
-					: __( 'Open chat', 'chagency' )
+					? 'chagency-launcher has-unread'
+					: 'chagency-launcher'
 			}
+			onClick={ onOpen }
+			title={ label || __( 'Open chat', 'chagency' ) }
+			aria-label={ aria }
 		>
-			<span
-				className="chagency-widget-launcher__dot"
-				aria-hidden="true"
-			/>
-			<span className="chagency-widget-launcher__label">
-				{ __( 'Chagency', 'chagency' ) }
-			</span>
+			<ChatIcon />
 			{ hasUnread ? (
 				<span
-					className="chagency-widget-launcher__badge"
+					className="chagency-launcher__badge"
 					aria-label={ `${ unreadCount }` }
 				>
-					{ unreadCount > 99 ? '99+' : unreadCount }
+					{ unreadCount > 9 ? '9+' : unreadCount }
 				</span>
 			) : null }
 		</button>
@@ -103,23 +123,19 @@ function Launcher( { onOpen, unreadCount, busy } ) {
 function Bubble( { from, body, tone } ) {
 	if ( tone === 'pending' ) {
 		return (
-			<div className="chagency-widget-bubble chagency-widget-bubble--assistant chagency-widget-bubble--pending">
+			<div className="chagency-bubble chagency-bubble--assistant chagency-bubble--pending">
 				<TypingDots />
 			</div>
 		);
 	}
 	const isUser = from === 'user';
 	const cls = [
-		'chagency-widget-bubble',
-		isUser
-			? 'chagency-widget-bubble--user'
-			: 'chagency-widget-bubble--assistant',
+		'chagency-bubble',
+		isUser ? 'chagency-bubble--user' : 'chagency-bubble--assistant',
 	];
 	if ( tone === 'error' ) {
-		cls.push( 'chagency-widget-bubble--error' );
+		cls.push( 'chagency-bubble--error' );
 	}
-	// User input stays plain text (safer, matches what they typed). Assistant
-	// replies are rendered as markdown — models tend to reach for it naturally.
 	return (
 		<div className={ cls.join( ' ' ) }>
 			{ isUser ? (
@@ -131,10 +147,40 @@ function Bubble( { from, body, tone } ) {
 	);
 }
 
+// sessionStorage key used to keep the panel open across admin navigations.
+const OPEN_STATE_KEY = 'chagency:panel-open';
+
+function readOpenState( surface ) {
+	if ( typeof window === 'undefined' || ! window.sessionStorage ) {
+		return false;
+	}
+	try {
+		return window.sessionStorage.getItem( OPEN_STATE_KEY + ':' + surface ) === '1';
+	} catch ( _ ) {
+		return false;
+	}
+}
+
+function writeOpenState( surface, isOpen ) {
+	if ( typeof window === 'undefined' || ! window.sessionStorage ) {
+		return;
+	}
+	try {
+		window.sessionStorage.setItem(
+			OPEN_STATE_KEY + ':' + surface,
+			isOpen ? '1' : '0'
+		);
+	} catch ( _ ) {
+		/* noop */
+	}
+}
+
 export default function Widget( { cfg } ) {
-	// Local settings state mirrors the server, but updates live when the
-	// Settings page dispatches `chagency:settings-changed`. This lets the
-	// "Enable chatbot" toggle show / hide the launcher immediately.
+	const surface = cfg.surface === 'frontend' ? 'frontend' : 'admin';
+	const enabledKey = surface === 'frontend' ? 'frontend_enabled' : 'admin_enabled';
+
+	// Local mirror of the server-side settings, updated live when Settings
+	// dispatches `chagency:settings-changed`.
 	const [ settings, setSettings ] = useState( cfg.settings || {} );
 
 	useEffect( () => {
@@ -148,8 +194,9 @@ export default function Widget( { cfg } ) {
 			window.removeEventListener( 'chagency:settings-changed', handler );
 	}, [] );
 
-	const enabled = !! settings.enabled;
+	const enabled = !! settings[ enabledKey ];
 	const greeting = settings.greeting || '';
+	const chatTitle = ( settings.chat_title || __( 'Assistant', 'chagency' ) ).trim();
 
 	const { messages, append, reset, unreadCount, markSeen } = useConversation(
 		{
@@ -158,19 +205,26 @@ export default function Widget( { cfg } ) {
 		}
 	);
 
-	const [ open, setOpen ] = useState( false );
+	// Panel open state persists across admin navigations via sessionStorage.
+	const [ open, setOpenState ] = useState( () => readOpenState( surface ) );
+	const setOpen = useCallback(
+		( next ) => {
+			setOpenState( next );
+			writeOpenState( surface, next );
+		},
+		[ surface ]
+	);
+
 	const [ input, setInput ] = useState( '' );
 	const [ busy, setBusy ] = useState( false );
 	const listRef = useRef( null );
+	const inputRef = useRef( null );
 
-	// Turning the chatbot off while the panel is open also closes the panel.
 	useEffect( () => {
 		if ( ! enabled && open ) {
 			setOpen( false );
 		}
-	}, [ enabled, open ] );
-
-	const { createErrorNotice } = useDispatch( noticesStore );
+	}, [ enabled, open, setOpen ] );
 
 	useEffect( () => {
 		if ( ! open ) {
@@ -182,13 +236,50 @@ export default function Widget( { cfg } ) {
 		}
 	}, [ messages, busy, open ] );
 
-	// When the panel is open, mark messages as seen so the unread badge
-	// clears. Also runs whenever new messages arrive while the panel is open.
+	useEffect( () => {
+		if ( open && inputRef.current ) {
+			// Tiny delay so the panel has finished its entry animation.
+			const id = setTimeout( () => {
+				try {
+					inputRef.current.focus();
+				} catch ( _ ) {
+					/* noop */
+				}
+			}, 80 );
+			return () => clearTimeout( id );
+		}
+		return undefined;
+	}, [ open ] );
+
 	useEffect( () => {
 		if ( open ) {
 			markSeen();
 		}
 	}, [ open, messages, markSeen ] );
+
+	// Escape closes the panel.
+	useEffect( () => {
+		if ( ! open ) {
+			return undefined;
+		}
+		const handler = ( e ) => {
+			if ( e.key === 'Escape' ) {
+				setOpen( false );
+			}
+		};
+		window.addEventListener( 'keydown', handler );
+		return () => window.removeEventListener( 'keydown', handler );
+	}, [ open, setOpen ] );
+
+	// Auto-grow textarea up to its CSS max-height.
+	useEffect( () => {
+		const el = inputRef.current;
+		if ( ! el ) {
+			return;
+		}
+		el.style.height = 'auto';
+		el.style.height = Math.min( el.scrollHeight, 120 ) + 'px';
+	}, [ input ] );
 
 	const handleSend = useCallback( () => {
 		const text = ( input || '' ).trim();
@@ -228,10 +319,9 @@ export default function Widget( { cfg } ) {
 					( err && err.message ) ||
 					__( 'Something went wrong.', 'chagency' );
 				append( { role: 'assistant', content: msg, tone: 'error' } );
-				createErrorNotice( msg, { type: 'snackbar' } );
 			} )
 			.finally( () => setBusy( false ) );
-	}, [ input, messages, busy, append, createErrorNotice ] );
+	}, [ input, messages, busy, append ] );
 
 	const onKeyDown = ( e ) => {
 		if ( e.key === 'Enter' && ! e.shiftKey ) {
@@ -244,72 +334,60 @@ export default function Widget( { cfg } ) {
 	const canReset =
 		messages.filter( ( m ) => m.tone !== 'greeting' ).length > 0;
 
-	// When the chatbot is disabled in Settings, render nothing.
 	if ( ! enabled ) {
 		return null;
 	}
 
+	const rootClass = `chagency chagency--${ surface }`;
+
 	return (
-		<>
+		<div className={ rootClass }>
 			{ ! open && (
 				<Launcher
 					onOpen={ () => setOpen( true ) }
 					unreadCount={ unreadCount }
-					busy={ busy }
+					label={ chatTitle }
 				/>
 			) }
 
 			{ open && (
 				<div
-					className="chagency-widget-panel"
+					className="chagency-panel"
 					role="dialog"
-					aria-label={ __( 'Chagency', 'chagency' ) }
+					aria-label={ chatTitle }
 				>
-					<header className="chagency-widget-panel__header">
-						<span className="chagency-widget-panel__title">
+					<header className="chagency-panel__header">
+						<span className="chagency-panel__title">
 							<span
-								className="chagency-widget-launcher__dot is-idle"
+								className="chagency-panel__dot"
 								aria-hidden="true"
 							/>
-							{ __( 'Chagency', 'chagency' ) }
+							{ chatTitle }
 						</span>
-						<div className="chagency-widget-panel__header-actions">
+						<div className="chagency-panel__actions">
 							{ canReset ? (
-								<Button
-									variant="tertiary"
-									size="compact"
+								<button
+									type="button"
+									className="chagency-panel__action chagency-panel__action--text"
 									onClick={ reset }
 									disabled={ busy }
 								>
 									{ __( 'Reset', 'chagency' ) }
-								</Button>
+								</button>
 							) : null }
-							<Button
-								className="chagency-widget-panel__minimize"
-								variant="tertiary"
-								size="small"
-								icon={
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										viewBox="0 0 20 20"
-										width="18"
-										height="18"
-										aria-hidden="true"
-									>
-										<path
-											fill="currentColor"
-											d="M5 13h10v2H5z"
-										/>
-									</svg>
-								}
+							<button
+								type="button"
+								className="chagency-panel__action"
 								onClick={ () => setOpen( false ) }
-								label={ __( 'Minimize', 'chagency' ) }
-							/>
+								aria-label={ __( 'Close', 'chagency' ) }
+							>
+								<CloseIcon />
+							</button>
 						</div>
 					</header>
 
 					<div
-						className="chagency-widget-panel__body"
+						className="chagency-panel__body"
 						ref={ listRef }
 						aria-live="polite"
 					>
@@ -324,41 +402,44 @@ export default function Widget( { cfg } ) {
 						{ busy ? (
 							<Bubble
 								from="assistant"
-								body={ __( 'Thinking…', 'chagency' ) }
+								body=""
 								tone="pending"
 							/>
 						) : null }
 					</div>
 
-					<div className="chagency-widget-panel__composer">
-						<TextareaControl
-							__nextHasNoMarginBottom
-							__next40pxDefaultSize
-							className="chagency-widget-input"
+					<form
+						className="chagency-panel__composer"
+						onSubmit={ ( e ) => {
+							e.preventDefault();
+							handleSend();
+						} }
+					>
+						<textarea
+							ref={ inputRef }
+							className="chagency-input"
 							placeholder={ __(
-								'Type your message…',
+								'Type a message…',
 								'chagency'
 							) }
 							value={ input }
-							onChange={ setInput }
+							onChange={ ( e ) => setInput( e.target.value ) }
 							rows={ 1 }
 							disabled={ busy }
 							onKeyDown={ onKeyDown }
-							hideLabelFromVision
-							label={ __( 'Your message', 'chagency' ) }
+							aria-label={ __( 'Your message', 'chagency' ) }
 						/>
-						<Button
-							__next40pxDefaultSize
-							variant="primary"
-							onClick={ handleSend }
+						<button
+							type="submit"
+							className="chagency-send"
 							disabled={ ! canSend }
-							isBusy={ busy }
+							aria-label={ __( 'Send', 'chagency' ) }
 						>
-							{ __( 'Send', 'chagency' ) }
-						</Button>
-					</div>
+							<SendIcon />
+						</button>
+					</form>
 				</div>
 			) }
-		</>
+		</div>
 	);
 }

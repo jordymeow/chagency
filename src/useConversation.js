@@ -1,5 +1,5 @@
 /**
- * `useConversation` — a tiny hook that persists chat history in localStorage
+ * `useConversation`, a tiny hook that persists chat history in localStorage
  * under a per-user key (seeded from PHP via `chagencyConfig.storageKey`). Both
  * the full-page app and the floating widget share this store so the user can
  * continue a conversation across admin pages.
@@ -45,7 +45,7 @@ function writeStorage( key, messages ) {
 			JSON.stringify( { v: STORAGE_VERSION, messages } )
 		);
 	} catch ( _ ) {
-		/* quota exceeded, private mode, etc. — silently ignore. */
+		/* quota exceeded, private mode, etc., silently ignore. */
 	}
 }
 

@@ -14,8 +14,7 @@ declare( strict_types=1 );
 
 namespace Chagency\Settings;
 
-use function Chagency\default_greeting;
-use function Chagency\default_system_instruction;
+use function Chagency\default_settings;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -37,7 +36,7 @@ class Settings_Registration {
 
 	/**
 	 * Registers the option with a full JSON schema. Enabling `show_in_rest`
-	 * lets `/wp/v2/settings` read it natively — handy for MCP clients even
+	 * lets `/wp/v2/settings` read it natively, handy for MCP clients even
 	 * though our React UI uses the custom `/chagency/v1/settings` endpoint.
 	 */
 	public static function register(): void {
@@ -47,17 +46,16 @@ class Settings_Registration {
 			array(
 				'type'              => 'object',
 				'description'       => __( 'Chagency settings.', 'chagency' ),
-				'default'           => array(
-					'system_instruction' => default_system_instruction(),
-					'greeting'           => default_greeting(),
-					'model_preference'   => 'auto',
-				),
+				'default'           => default_settings(),
 				'sanitize_callback' => '\\Chagency\\sanitize_settings',
 				'show_in_rest'      => array(
 					'schema' => array(
 						'type'                 => 'object',
 						'additionalProperties' => false,
 						'properties'           => array(
+							'admin_enabled'      => array( 'type' => 'boolean' ),
+							'frontend_enabled'   => array( 'type' => 'boolean' ),
+							'chat_title'         => array( 'type' => 'string' ),
 							'system_instruction' => array( 'type' => 'string' ),
 							'greeting'           => array( 'type' => 'string' ),
 							'model_preference'   => array( 'type' => 'string' ),

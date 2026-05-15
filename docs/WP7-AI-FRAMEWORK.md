@@ -1,14 +1,14 @@
-# WordPress 7 AI Framework — working notes
+# WordPress 7 AI Framework, working notes
 
 A condensed, plugin-author-facing reference to the APIs this plugin is built on. Verified against **WordPress 7.0-RC2**.
 
-This file is not a substitute for core docs — it's a distilled crib sheet for anyone maintaining the Chagency plugin.
+This file is not a substitute for core docs, it's a distilled crib sheet for anyone maintaining the Chagency plugin.
 
 ---
 
 ## The three APIs
 
-### 1. AI Client — `wp_ai_client_prompt()`
+### 1. AI Client, `wp_ai_client_prompt()`
 
 `wp-includes/ai-client.php`. Entry point:
 
@@ -59,7 +59,7 @@ Note the role enum is `model()`, **not** `assistant()`. The REST layer in `inclu
 
 **Errors.** A `WP_Error` from `generate_text()` carries a `status` code in its data (e.g. 400 for `prompt_invalid_argument`, 503 for `prompt_network_error`). Safe to return directly from a REST callback.
 
-### 2. Connectors — `wp_get_connectors()`
+### 2. Connectors, `wp_get_connectors()`
 
 `wp-includes/connectors.php`. Returns every registered provider, keyed by ID:
 
@@ -82,7 +82,7 @@ wp_get_connectors()[ 'anthropic' ] === [
 
 Keys stored in `get_option()` are validated on write by core (`_wp_connectors_rest_settings_dispatch`); a bad key is wiped. On read, core masks keys in REST responses.
 
-### 3. Abilities — `wp_register_ability()`
+### 3. Abilities, `wp_register_ability()`
 
 `wp-includes/abilities-api.php`. Register on `wp_abilities_api_init`; register categories on `wp_abilities_api_categories_init`:
 
@@ -123,7 +123,7 @@ Abilities are also exposed over REST when `meta.show_in_rest` is true, and can b
 ## Gotchas discovered while building
 
 * `using_provider( $id )` requires the provider to be **registered in the AI Client registry**, not just in the Connectors registry. In practice the provider-plugin (e.g. `ai-provider-for-anthropic`) does both. Always guard a test call with `is_supported_for_text_generation()` first.
-* Every fluent method on the builder swallows exceptions and flags the builder as errored. Chaining many fluent calls is safe — the first generator call will surface the error. But don't assume `is_supported_for_text_generation()` is free of side effects: if a prior fluent call errored, it returns `false`.
+* Every fluent method on the builder swallows exceptions and flags the builder as errored. Chaining many fluent calls is safe, the first generator call will surface the error. But don't assume `is_supported_for_text_generation()` is free of side effects: if a prior fluent call errored, it returns `false`.
 * `with_history( ...$msgs )` uses **spread**, not an array. `with_history( $array )` silently does the wrong thing.
 * Ability names must be lowercase, alphanumeric + hyphen + slash. `AI-Chat/SendMessage` gets rejected with `_doing_it_wrong`.
 * `register_setting()` with `type: 'object'` + `show_in_rest: false` is fine when you don't want the option exposed over REST. If you flip `show_in_rest` to `true`, define a full `schema` or core will reject updates.
@@ -132,9 +132,9 @@ Abilities are also exposed over REST when `meta.show_in_rest` is true, and can b
 
 ## References in core
 
-* `wp-includes/ai-client.php` — `wp_ai_client_prompt()`, `wp_supports_ai()`
-* `wp-includes/ai-client/class-wp-ai-client-prompt-builder.php` — fluent builder (all the `@method` annotations list the SDK surface)
-* `wp-includes/connectors.php` — `wp_get_connectors()`, defaults, key masking
-* `wp-includes/class-wp-connector-registry.php` — registry internals
-* `wp-includes/abilities-api.php` — `wp_register_ability()`, category registration, REST exposure
-* `wp-includes/php-ai-client/src/` — the bundled SDK (`Messages`, `Providers`, `Builders`, `Tools`)
+* `wp-includes/ai-client.php`, `wp_ai_client_prompt()`, `wp_supports_ai()`
+* `wp-includes/ai-client/class-wp-ai-client-prompt-builder.php`, fluent builder (all the `@method` annotations list the SDK surface)
+* `wp-includes/connectors.php`, `wp_get_connectors()`, defaults, key masking
+* `wp-includes/class-wp-connector-registry.php`, registry internals
+* `wp-includes/abilities-api.php`, `wp_register_ability()`, category registration, REST exposure
+* `wp-includes/php-ai-client/src/`, the bundled SDK (`Messages`, `Providers`, `Builders`, `Tools`)

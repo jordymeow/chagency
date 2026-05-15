@@ -1,5 +1,5 @@
 /**
- * Chagency Settings — script-module "stage".
+ * Chagency Settings, script-module "stage".
  *
  * Boot (@wordpress/boot) imports this module dynamically when the
  * `chagency/settings/content` route is active, then renders the exported

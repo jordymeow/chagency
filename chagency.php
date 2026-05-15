@@ -9,7 +9,7 @@
  *
  * @wordpress-plugin
  * Plugin Name:       Chagency
- * Description:       A chatbot today, an agent tomorrow — built natively on the WordPress 7 AI framework, with zero third-party plugin requirements.
+ * Description:       A chatbot today, an agent tomorrow, built natively on the WordPress 7 AI framework, with zero third-party plugin requirements.
  * Version: 0.0.1
  * Requires at least: 7.0
  * Requires PHP:      7.4

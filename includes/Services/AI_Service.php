@@ -4,7 +4,7 @@
  *
  * Wraps `wp_ai_client_prompt()` with the plugin's defaults (model preference,
  * system instruction, history handling). Structurally mirrors WordPress/ai's
- * `AI_Service` — there's only one call-site per concern, so features don't
+ * `AI_Service`, there's only one call-site per concern, so features don't
  * rebuild the fluent chain each time.
  *
  * @package Chagency

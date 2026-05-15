@@ -1,5 +1,6 @@
 /**
- * Settings tab — behaviour + providers. Rendered inside the App's TabPanel.
+ * Settings → Chagency. Two cards: Chatbot (toggles + behaviour) and
+ * Providers (status + test).
  *
  * @package
  */
@@ -15,7 +16,7 @@ import {
 	TextControl,
 	TextareaControl,
 	ToggleControl,
-	/* eslint-disable @wordpress/no-unsafe-wp-apis -- Same layout primitives used by core's Connectors screen; the public alternatives (HStack/VStack/Heading/Text/ConfirmDialog) are not yet shipped. */
+	/* eslint-disable @wordpress/no-unsafe-wp-apis -- Same layout primitives used by core's Connectors screen. */
 	__experimentalConfirmDialog as ConfirmDialog,
 	__experimentalHStack as HStack,
 	__experimentalHeading as Heading,
@@ -73,10 +74,6 @@ function ProviderRow( { connector, notice } ) {
 		>
 			<div className="chagency-provider-row__name">
 				<Text weight="600">{ connector.name }</Text>
-				<Text variant="muted" size="12px">
-					{ __( 'Auth:', 'chagency' ) }{ ' ' }
-					<code>{ connector.method }</code>
-				</Text>
 			</div>
 			<span
 				className={
@@ -113,7 +110,7 @@ function PlaceholderHelp( { placeholders } ) {
 			<ul>
 				{ entries.map( ( [ token, descr ] ) => (
 					<li key={ token }>
-						<code>{ token }</code> — { descr }
+						<code>{ token }</code>, { descr }
 					</li>
 				) ) }
 			</ul>
@@ -123,7 +120,9 @@ function PlaceholderHelp( { placeholders } ) {
 
 export default function Settings( { cfg } ) {
 	const initial = cfg.settings || {
-		enabled: false,
+		admin_enabled: true,
+		frontend_enabled: false,
+		chat_title: '',
 		system_instruction: '',
 		greeting: '',
 		model_preference: 'auto',
@@ -151,6 +150,8 @@ export default function Settings( { cfg } ) {
 		setDirty( true );
 	};
 
+	// Lets the live admin widget pick up enable/disable + greeting changes
+	// without a page reload.
 	const broadcast = ( payload ) => {
 		try {
 			window.dispatchEvent(
@@ -216,84 +217,95 @@ export default function Settings( { cfg } ) {
 		<Page
 			title={ __( 'Chagency', 'chagency' ) }
 			subTitle={ __(
-				'Configure how the chatbot behaves and which provider it uses.',
+				'The first chatbot built natively on the WordPress 7 AI infrastructure.',
 				'chagency'
 			) }
 		>
 			<div className="chagency-settings-column">
 				<VStack spacing={ 5 }>
-					<Card size="small">
-						<CardHeader>
-							<VStack spacing={ 1 }>
-								<Heading level={ 3 }>
-									{ __( 'Availability', 'chagency' ) }
-								</Heading>
-								<Text variant="muted" size="13px">
-									{ __(
-										'Turn the floating chatbot on or off for every admin page.',
-										'chagency'
-									) }
-								</Text>
-							</VStack>
-						</CardHeader>
-						<CardBody>
-							<VStack spacing={ 4 }>
-								{ ! hasCredentials && (
-									<Notice
-										status="warning"
-										isDismissible={ false }
-									>
-										{ createInterpolateElement(
-											__(
-												'No AI provider is configured yet. Add an API key under <a>Settings → Connectors</a> — until then the chat panel will not appear, even when enabled.',
-												'chagency'
-											),
-											{
-												a: connectorsUrl ? (
-													// eslint-disable-next-line jsx-a11y/anchor-has-content
-													<a href={ connectorsUrl } />
-												) : (
-													<span />
-												),
-											}
-										) }
-									</Notice>
-								) }
-								<ToggleControl
-									__nextHasNoMarginBottom
-									label={ __(
-										'Enable chatbot on every admin page',
-										'chagency'
-									) }
-									help={ __(
-										'When enabled, a small chat button appears in the bottom-right of every admin page for users who can manage options.',
-										'chagency'
-									) }
-									checked={ !! form.enabled }
-									onChange={ ( enabled ) =>
-										update( { enabled } )
-									}
-								/>
-							</VStack>
-						</CardBody>
-					</Card>
+					{ ! hasCredentials && (
+						<Notice status="warning" isDismissible={ false }>
+							{ createInterpolateElement(
+								__(
+									'No AI provider is configured yet. Add an API key under <a>Settings → Connectors</a>, the chatbot stays hidden until then.',
+									'chagency'
+								),
+								{
+									a: connectorsUrl ? (
+										// eslint-disable-next-line jsx-a11y/anchor-has-content
+										<a href={ connectorsUrl } />
+									) : (
+										<span />
+									),
+								}
+							) }
+						</Notice>
+					) }
 
 					<Card size="small">
 						<CardHeader>
-							<VStack spacing={ 1 }>
-								<Heading level={ 3 }>
-									{ __( 'Behaviour', 'chagency' ) }
-								</Heading>
-								<Text variant="muted" size="13px">
-									{ __(
-										'These defaults shape every conversation.',
-										'chagency'
-									) }
-								</Text>
-							</VStack>
+							<Heading level={ 3 }>
+								{ __( 'Chatbot', 'chagency' ) }
+							</Heading>
 						</CardHeader>
 						<CardBody>
 							<VStack spacing={ 5 }>
+								<ToggleControl
+									__nextHasNoMarginBottom
+									label={ __(
+										'Show in the WordPress admin',
+										'chagency'
+									) }
+									help={ __(
+										'A floating chat button appears for users who can manage options.',
+										'chagency'
+									) }
+									checked={ !! form.admin_enabled }
+									onChange={ ( admin_enabled ) =>
+										update( { admin_enabled } )
+									}
+								/>
+								<ToggleControl
+									__nextHasNoMarginBottom
+									label={ __(
+										'Show on the public site',
+										'chagency'
+									) }
+									help={ __(
+										'A floating chat button appears on every page of the site, available to every visitor.',
+										'chagency'
+									) }
+									checked={ !! form.frontend_enabled }
+									onChange={ ( frontend_enabled ) =>
+										update( { frontend_enabled } )
+									}
+								/>
+								<TextControl
+									__nextHasNoMarginBottom
+									__next40pxDefaultSize
+									label={ __( 'Chat title', 'chagency' ) }
+									help={ __(
+										'Shown in the panel header and on the launcher tooltip.',
+										'chagency'
+									) }
+									value={ form.chat_title || '' }
+									onChange={ ( chat_title ) =>
+										update( { chat_title } )
+									}
+								/>
+								<TextControl
+									__nextHasNoMarginBottom
+									__next40pxDefaultSize
+									label={ __( 'Greeting', 'chagency' ) }
+									help={ __(
+										'Shown as the first message of every fresh conversation.',
+										'chagency'
+									) }
+									value={ form.greeting || '' }
+									onChange={ ( greeting ) =>
+										update( { greeting } )
+									}
+								/>
 								<TextareaControl
 									__nextHasNoMarginBottom
 									label={ __(
@@ -301,7 +313,7 @@ export default function Settings( { cfg } ) {
 										'chagency'
 									) }
 									help={ __(
-										'What the assistant should do. Use placeholders to personalise (see below).',
+										'Shapes how the assistant responds. Placeholders are expanded server-side.',
 										'chagency'
 									) }
 									rows={ 6 }
@@ -313,29 +325,10 @@ export default function Settings( { cfg } ) {
 								<PlaceholderHelp
 									placeholders={ placeholders }
 								/>
-								<TextControl
-									__nextHasNoMarginBottom
-									__next40pxDefaultSize
-									label={ __(
-										'Greeting message',
-										'chagency'
-									) }
-									help={ __(
-										'Shown as the first message of every fresh conversation.',
-										'chagency'
-									) }
-									value={ form.greeting || '' }
-									onChange={ ( greeting ) =>
-										update( { greeting } )
-									}
-								/>
 								<SelectControl
 									__nextHasNoMarginBottom
 									__next40pxDefaultSize
-									label={ __(
-										'Model preference',
-										'chagency'
-									) }
+									label={ __( 'Model', 'chagency' ) }
 									help={ __(
 										'Pin to a specific provider, or leave on Automatic.',
 										'chagency'
@@ -362,7 +355,9 @@ export default function Settings( { cfg } ) {
 									variant="primary"
 									onClick={ save }
 									isBusy={ saving }
-									disabled={ saving || resetting || ! dirty }
+									disabled={
+										saving || resetting || ! dirty
+									}
 								>
 									{ saving
 										? __( 'Saving…', 'chagency' )
@@ -379,16 +374,14 @@ export default function Settings( { cfg } ) {
 									{ __( 'Providers', 'chagency' ) }
 								</Heading>
 								<Text variant="muted" size="13px">
-									{ __(
-										'The chatbot uses whichever provider you configured under Settings → Connectors. Send a one-word canary prompt to confirm each provider is answering.',
-										'chagency'
-									) }{ ' ' }
-									<a href={ cfg.connectorsUrl }>
+									{ __( 'Manage API keys under', 'chagency' ) }{ ' ' }
+									<a href={ connectorsUrl }>
 										{ __(
-											'Manage Connectors →',
+											'Settings → Connectors',
 											'chagency'
 										) }
 									</a>
+									.
 								</Text>
 							</VStack>
 						</CardHeader>
@@ -425,7 +418,7 @@ export default function Settings( { cfg } ) {
 					confirmButtonText={ __( 'Reset', 'chagency' ) }
 				>
 					{ __(
-						'Reset all chatbot settings to their defaults? This restores the system instruction, greeting, and provider preference — your conversation history is not touched.',
+						'Reset all settings to their defaults? Your conversation history is not touched.',
 						'chagency'
 					) }
 				</ConfirmDialog>
