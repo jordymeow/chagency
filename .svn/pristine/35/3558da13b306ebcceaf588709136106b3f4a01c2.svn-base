@@ -1,22 +1,20 @@
 === Chagency ===
 Contributors: TigrouMeow
-Tags: ai, chatbot, agent, connectors, abilities
+Tags: ai, chatbot, agent, assistant, abilities
 Requires at least: 7.0
 Tested up to: 7.0
-Stable tag: 0.0.3
+Stable tag: 0.0.2
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-The first chatbot built natively on the WordPress 7 AI Client. No bundled SDKs, no third-party JavaScript, no telemetry.
+The first chatbot built natively on the WordPress 7 AI infrastructure. Small, native, zero third-party plugin requirements.
 
 == Description ==
 
-**Chagency** is the first chatbot to ship directly on top of the new AI Client introduced in WordPress 7.0 — `wp_ai_client_prompt()`, Connectors, and the Abilities API. Every prompt flows through WordPress core, every provider is a Connector you already configured under **Settings → Connectors**, and every action it exposes is a registered Ability that other plugins (and other AI agents) can call.
+**Chagency** is the first chatbot to ship on top of the new AI infrastructure introduced in WordPress 7. A small, native plugin that lets you talk to your site through whichever AI provider you have configured. It runs in the WordPress admin and, when you turn it on, on every page of your public site.
 
-There is no other plugin on wordpress.org that builds on `wp_ai_client_prompt()` today. Chagency is the reference case: a small, native chatbot that proves the framework works, ships zero vendor SDKs, and grows alongside the Abilities API into a real agent.
-
-It runs in the WordPress admin and, when you turn it on, on every page of your public site. The name (chat + ai + ency) is meant as a small bridge between the new AI primitives shipped with WordPress and the broader world of chat and agents. It starts as a chatbot today and turns into an agent tomorrow, without a rename.
+The name (chat + ai + ency) is meant as a small bridge between the new AI primitives shipped with WordPress and the broader world of chat and agents. It starts as a chatbot today and grows alongside the Abilities API into an agent that can take real actions tomorrow.
 
 == 🪨 Built on WordPress, period ==
 
@@ -92,10 +90,6 @@ To rebuild from source:
 The build is `@wordpress/scripts` (webpack) with no custom plugins or transforms.
 
 == Changelog ==
-
-= 0.0.3 (2026/05/22) =
-* Update: Rebuilt plugin against the WP 7 AI plugin toolchain.
-* Update: Sharpened wordpress.org positioning.
 
 = 0.0.2 (2026/05/15) =
 * Add: option to show the chat widget on the public site for all visitors
