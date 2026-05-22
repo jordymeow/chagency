@@ -99,9 +99,7 @@ function Launcher( { onOpen, unreadCount, label } ) {
 		<button
 			type="button"
 			className={
-				hasUnread
-					? 'chagency-launcher has-unread'
-					: 'chagency-launcher'
+				hasUnread ? 'chagency-launcher has-unread' : 'chagency-launcher'
 			}
 			onClick={ onOpen }
 			title={ label || __( 'Open chat', 'chagency' ) }
@@ -155,7 +153,10 @@ function readOpenState( surface ) {
 		return false;
 	}
 	try {
-		return window.sessionStorage.getItem( OPEN_STATE_KEY + ':' + surface ) === '1';
+		return (
+			window.sessionStorage.getItem( OPEN_STATE_KEY + ':' + surface ) ===
+			'1'
+		);
 	} catch ( _ ) {
 		return false;
 	}
@@ -177,7 +178,8 @@ function writeOpenState( surface, isOpen ) {
 
 export default function Widget( { cfg } ) {
 	const surface = cfg.surface === 'frontend' ? 'frontend' : 'admin';
-	const enabledKey = surface === 'frontend' ? 'frontend_enabled' : 'admin_enabled';
+	const enabledKey =
+		surface === 'frontend' ? 'frontend_enabled' : 'admin_enabled';
 
 	// Local mirror of the server-side settings, updated live when Settings
 	// dispatches `chagency:settings-changed`.
@@ -196,7 +198,6 @@ export default function Widget( { cfg } ) {
 
 	const enabled = !! settings[ enabledKey ];
 	const greeting = settings.greeting || '';
-	const chatTitle = ( settings.chat_title || __( 'Assistant', 'chagency' ) ).trim();
 
 	const { messages, append, reset, unreadCount, markSeen } = useConversation(
 		{
@@ -338,6 +339,9 @@ export default function Widget( { cfg } ) {
 		return null;
 	}
 
+	const chatTitle = (
+		settings.chat_title || __( 'Assistant', 'chagency' )
+	).trim();
 	const rootClass = `chagency chagency--${ surface }`;
 
 	return (
@@ -400,11 +404,7 @@ export default function Widget( { cfg } ) {
 							/>
 						) ) }
 						{ busy ? (
-							<Bubble
-								from="assistant"
-								body=""
-								tone="pending"
-							/>
+							<Bubble from="assistant" body="" tone="pending" />
 						) : null }
 					</div>
 
@@ -418,10 +418,7 @@ export default function Widget( { cfg } ) {
 						<textarea
 							ref={ inputRef }
 							className="chagency-input"
-							placeholder={ __(
-								'Type a message…',
-								'chagency'
-							) }
+							placeholder={ __( 'Type a message…', 'chagency' ) }
 							value={ input }
 							onChange={ ( e ) => setInput( e.target.value ) }
 							rows={ 1 }

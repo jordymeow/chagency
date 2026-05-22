@@ -1,6 +1,6 @@
 === Chagency ===
 Contributors: TigrouMeow
-Tags: ai, chatbot, agent, assistant, abilities
+Tags: ai, chatbot, agent, connectors, abilities
 Requires at least: 7.0
 Tested up to: 7.0
 Stable tag: 0.0.2
@@ -8,13 +8,15 @@ Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-The first chatbot built natively on the WordPress 7 AI infrastructure. Small, native, zero third-party plugin requirements.
+The first chatbot built natively on the WordPress 7 AI Client. No bundled SDKs, no third-party JavaScript, no telemetry.
 
 == Description ==
 
-**Chagency** is the first chatbot to ship on top of the new AI infrastructure introduced in WordPress 7. A small, native plugin that lets you talk to your site through whichever AI provider you have configured. It runs in the WordPress admin and, when you turn it on, on every page of your public site.
+**Chagency** is the first chatbot to ship directly on top of the new AI Client introduced in WordPress 7.0 — `wp_ai_client_prompt()`, Connectors, and the Abilities API. Every prompt flows through WordPress core, every provider is a Connector you already configured under **Settings → Connectors**, and every action it exposes is a registered Ability that other plugins (and other AI agents) can call.
 
-The name (chat + ai + ency) is meant as a small bridge between the new AI primitives shipped with WordPress and the broader world of chat and agents. It starts as a chatbot today and grows alongside the Abilities API into an agent that can take real actions tomorrow.
+There is no other plugin on wordpress.org that builds on `wp_ai_client_prompt()` today. Chagency is the reference case: a small, native chatbot that proves the framework works, ships zero vendor SDKs, and grows alongside the Abilities API into a real agent.
+
+It runs in the WordPress admin and, when you turn it on, on every page of your public site. The name (chat + ai + ency) is meant as a small bridge between the new AI primitives shipped with WordPress and the broader world of chat and agents. It starts as a chatbot today and turns into an agent tomorrow, without a rename.
 
 == 🪨 Built on WordPress, period ==
 

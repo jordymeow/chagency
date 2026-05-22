@@ -261,8 +261,8 @@ export default function Settings( { cfg } ) {
 										'chagency'
 									) }
 									checked={ !! form.admin_enabled }
-									onChange={ ( admin_enabled ) =>
-										update( { admin_enabled } )
+									onChange={ ( next ) =>
+										update( { admin_enabled: next } )
 									}
 								/>
 								<ToggleControl
@@ -276,8 +276,8 @@ export default function Settings( { cfg } ) {
 										'chagency'
 									) }
 									checked={ !! form.frontend_enabled }
-									onChange={ ( frontend_enabled ) =>
-										update( { frontend_enabled } )
+									onChange={ ( next ) =>
+										update( { frontend_enabled: next } )
 									}
 								/>
 								<TextControl
@@ -289,8 +289,8 @@ export default function Settings( { cfg } ) {
 										'chagency'
 									) }
 									value={ form.chat_title || '' }
-									onChange={ ( chat_title ) =>
-										update( { chat_title } )
+									onChange={ ( next ) =>
+										update( { chat_title: next } )
 									}
 								/>
 								<TextControl
@@ -355,9 +355,7 @@ export default function Settings( { cfg } ) {
 									variant="primary"
 									onClick={ save }
 									isBusy={ saving }
-									disabled={
-										saving || resetting || ! dirty
-									}
+									disabled={ saving || resetting || ! dirty }
 								>
 									{ saving
 										? __( 'Saving…', 'chagency' )
@@ -374,7 +372,10 @@ export default function Settings( { cfg } ) {
 									{ __( 'Providers', 'chagency' ) }
 								</Heading>
 								<Text variant="muted" size="13px">
-									{ __( 'Manage API keys under', 'chagency' ) }{ ' ' }
+									{ __(
+										'Manage API keys under',
+										'chagency'
+									) }{ ' ' }
 									<a href={ connectorsUrl }>
 										{ __(
 											'Settings → Connectors',

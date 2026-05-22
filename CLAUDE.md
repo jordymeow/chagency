@@ -127,24 +127,36 @@ Our Settings page follows Automattic's "boot" pattern used by Settings → Conne
 pnpm install          # one-time
 pnpm run build        # production bundle
 pnpm run start        # watch mode while editing src/
-pnpm run lint:js      # eslint
+pnpm run lint:js      # eslint (flat config, see eslint.config.js)
 pnpm run lint:css     # stylelint
 pnpm run plugin-zip   # wp.org-ready zip; post-process with
                       # `zip -d chagency.zip 'chagency/README.md' 'chagency/package.json'`
                       # to strip files npm-packlist forces in.
 ```
 
+Toolchain (as of 2026-05-22):
+
+- `@wordpress/scripts` 32.2.x (ESLint 10 flat config; project overrides live in `eslint.config.js`)
+- `@wordpress/admin-ui` 2.1.x (used for the `<Page>` wrapper inside the boot stage)
+- `@wordpress/browserslist-config` 6.46.x
+- `pnpm.overrides` pin `fast-uri ^3.1.2` + `uuid ^11.1.1` to clear two HIGH and one moderate transitive advisories that surface through `@wordpress/admin-ui > ... > stylelint > table > ajv > fast-uri`.
+
 Local dev site: `http://seven.nekod.net/wp-admin/`. Plugin folder is symlinked from `~/plugins/ai-chat` (local dev folder name still says ai-chat) → `wp-content/plugins/ai-chat/`. The plugin source has been fully renamed to Chagency; only the local folder name is legacy and harmless.
 
 Smoke path: activate → Settings → Connectors → add a key → Settings → Chagency → toggle "Enable", hit Save → click the launcher in the bottom-right → send a message → reply arrives.
 
-## wp.org status (0.0.1)
+## wp.org status (current: 0.0.2 live)
+
+History:
 
 - 2026-04-20: submitted as "AI Chatkit". Pre-review queue.
 - 2026-04-21 (review email): flagged for "Chatkit" trademark concern + `AI ...` generic prefix + inline `<style>` + Plugin URI 404 + 4-char prefix rule on globals.
 - 2026-04-21: renamed to **Chagency**, fixed inline `<style>` (now `wp_add_inline_style`), removed `Plugin URI:` line. Re-uploaded.
+- 2026-05-05: 0.0.1 approved and published on wp.org.
+- 2026-05-15: 0.0.2 shipped (public-site widget toggle, configurable chat title, panel persistence across admin nav, WP 7 AI plugin styling).
+- SVN access granted; tags `0.0.1/` and `0.0.2/` both live at `plugins.svn.wordpress.org/chagency/tags/`. `.svn/` is the local working copy (untracked in git, intentionally).
 
-**Stable tag stays `0.0.1` until SVN access is granted** (the tag reflects what's on SVN, not local dev).
+When cutting a new release: bump `chagency.php` (`Version:` header + `CHAGENCY_VERSION`), `readme.txt` Stable tag, `package.json` version, add `docs/CHANGELOG.md` entry, then `svn cp trunk tags/X.Y.Z` and `svn ci`.
 
 ## When to update docs
 

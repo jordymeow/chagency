@@ -20,6 +20,7 @@ pnpm-lock.yaml
 pnpm-workspace.yaml
 webpack.config.js
 postcss.config.js
+eslint.config.js
 phpcs.xml.dist
 phpstan.neon.dist
 phpunit.xml.dist
