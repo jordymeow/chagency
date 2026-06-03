@@ -176,6 +176,35 @@ function default_model_preferences(): array {
 }
 
 /**
+ * Returns true when an api_key connector has its key available from any source
+ * WordPress 7 recognises: an environment variable, a PHP constant, or the saved
+ * option. Mirrors core's get_connector_api_key_source() (WP-ai 1.0.1, PR #603) so
+ * the launcher stays visible when a key is supplied via env var or constant, not
+ * only via the option. On older cores the env/constant keys are simply absent and
+ * we fall through to the option, preserving prior behaviour.
+ *
+ * @param array<string,mixed> $auth A connector's `authentication` array.
+ */
+function api_key_connector_has_credentials( array $auth ): bool {
+	$env_var = (string) ( $auth['env_var_name'] ?? '' );
+	if ( '' !== $env_var ) {
+		$value = getenv( $env_var );
+		if ( false !== $value && '' !== $value ) {
+			return true;
+		}
+	}
+	$constant = (string) ( $auth['constant_name'] ?? '' );
+	if ( '' !== $constant && defined( $constant ) ) {
+		$value = constant( $constant );
+		if ( is_string( $value ) && '' !== $value ) {
+			return true;
+		}
+	}
+	$setting_name = (string) ( $auth['setting_name'] ?? '' );
+	return '' !== $setting_name && '' !== (string) get_option( $setting_name, '' );
+}
+
+/**
  * Returns true if at least one AI provider is configured.
  */
 function has_credentials(): bool {
@@ -190,10 +219,7 @@ function has_credentials(): bool {
 		if ( 'api_key' !== ( $auth['method'] ?? '' ) ) {
 			return true;
 		}
-		if ( empty( $auth['setting_name'] ) ) {
-			continue;
-		}
-		if ( '' !== (string) get_option( $auth['setting_name'], '' ) ) {
+		if ( api_key_connector_has_credentials( $auth ) ) {
 			return true;
 		}
 	}
@@ -216,13 +242,9 @@ function list_connectors_status(): array {
 		}
 		$auth          = $data['authentication'] ?? array();
 		$method        = (string) ( $auth['method'] ?? 'none' );
-		$is_configured = false;
-		if ( 'api_key' === $method ) {
-			$setting_name  = (string) ( $auth['setting_name'] ?? '' );
-			$is_configured = '' !== $setting_name && '' !== (string) get_option( $setting_name, '' );
-		} else {
-			$is_configured = true;
-		}
+		$is_configured = 'api_key' === $method
+			? api_key_connector_has_credentials( $auth )
+			: true;
 		$out[] = array(
 			'id'           => (string) $id,
 			'name'         => (string) ( $data['name'] ?? $id ),
