@@ -3,7 +3,7 @@ Contributors: TigrouMeow
 Tags: ai, chatbot, agent, connectors, abilities
 Requires at least: 7.0
 Tested up to: 7.0
-Stable tag: 0.0.3
+Stable tag: 0.0.4
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -92,6 +92,9 @@ To rebuild from source:
 The build is `@wordpress/scripts` (webpack) with no custom plugins or transforms.
 
 == Changelog ==
+
+= 0.0.4 (2026/06/03) =
+* Fix: Chat launcher now appears when the AI provider key is set via an environment variable or constant, not only when saved through the settings page.
 
 = 0.0.3 (2026/05/22) =
 * Update: Rebuilt plugin against the WP 7 AI plugin toolchain.
