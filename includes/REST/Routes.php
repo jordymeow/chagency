@@ -40,6 +40,17 @@ class Routes {
 	public const NAMESPACE = 'chagency/v1';
 
 	/**
+	 * How many past turns are replayed to the model.
+	 *
+	 * The browser keeps the whole conversation, but every turn is re-sent and
+	 * re-billed on each message, and long enough histories eventually blow the
+	 * model's context. Twenty turns is ten exchanges of memory, which is more
+	 * than any chat-panel conversation needs, and it keeps the cost of a very
+	 * long-running panel flat instead of quadratic.
+	 */
+	public const MAX_HISTORY_TURNS = 20;
+
+	/**
 	 * Wires the hook.
 	 */
 	public static function init(): void {
@@ -191,6 +202,9 @@ class Routes {
 			);
 		}
 		$history = array_slice( $normalized, 0, -1 );
+		if ( count( $history ) > self::MAX_HISTORY_TURNS ) {
+			$history = array_slice( $history, -self::MAX_HISTORY_TURNS );
+		}
 
 		$options = array();
 		$system_raw = $request->get_param( 'system_instruction' );
