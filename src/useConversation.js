@@ -83,7 +83,7 @@ function buildInitial( greeting ) {
  * @param {Object} opts
  * @param {string} opts.storageKey - per-user key; scoped via PHP.
  * @param {string} opts.greeting   - first-message text (local-only).
- * @return {{ messages: Array, setMessages: Function, append: Function, reset: Function, unreadCount: number, markSeen: Function }} Conversation state + actions.
+ * @return {{ messages: Array, setMessages: Function, append: Function, dropLast: Function, reset: Function, unreadCount: number, markSeen: Function }} Conversation state + actions.
  */
 export default function useConversation( { storageKey, greeting } ) {
 	const [ messages, setMessages ] = useState( () => {
@@ -132,6 +132,12 @@ export default function useConversation( { storageKey, greeting } ) {
 		setMessages( ( prev ) => prev.concat( [ msg ] ) );
 	}, [] );
 
+	// Used by Retry: the failed attempt's error bubble is removed so a
+	// successful retry doesn't leave a stale error in the transcript.
+	const dropLast = useCallback( () => {
+		setMessages( ( prev ) => prev.slice( 0, -1 ) );
+	}, [] );
+
 	const reset = useCallback( () => {
 		const fresh = buildInitial( greeting );
 		setMessages( fresh );
@@ -148,5 +154,13 @@ export default function useConversation( { storageKey, greeting } ) {
 	const realCount = messages.filter( ( m ) => m.tone !== 'greeting' ).length;
 	const unreadCount = Math.max( 0, realCount - seenCount );
 
-	return { messages, setMessages, append, reset, unreadCount, markSeen };
+	return {
+		messages,
+		setMessages,
+		append,
+		dropLast,
+		reset,
+		unreadCount,
+		markSeen,
+	};
 }

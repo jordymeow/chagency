@@ -81,6 +81,113 @@
 }
 
 /* ============================================================
+   Abilities picker (Settings)
+   ============================================================ */
+
+.chagency-ability-group > .components-text {
+	display: block;
+	margin-bottom: 12px;
+	letter-spacing: 0.4px;
+}
+
+.chagency-ability {
+	padding-bottom: 12px;
+	border-bottom: 1px solid var(--wpds-color-stroke-surface-neutral-weak, #e0e0e0);
+}
+
+.chagency-abilities .chagency-ability:last-child {
+	padding-bottom: 0;
+	border-bottom: 0;
+}
+
+.chagency-ability__meta {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 0 0 4px 28px;
+}
+
+.chagency-ability__meta code {
+	font-size: 12px;
+	background: var(--wpds-color-bg-surface-neutral, #f4f4f4);
+	padding: 1px 5px;
+	border-radius: 3px;
+}
+
+.chagency-ability .components-text {
+	display: block;
+	margin-left: 28px;
+}
+
+/* ============================================================
+   Ability steps, shown under an assistant reply
+   ============================================================ */
+
+.chagency-steps {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 8px;
+}
+
+.chagency-step {
+	font-size: 11px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	padding: 1px 7px;
+	border-radius: 10px;
+	background: rgba(0, 0, 0, 0.06);
+	color: inherit;
+	opacity: 0.75;
+}
+
+.chagency-step--failed {
+	background: #fdeceb;
+	color: #8a1f11;
+	opacity: 1;
+}
+
+/* ============================================================
+   Error affordances inside a bubble
+   ============================================================ */
+
+.chagency-detail {
+	margin-top: 8px;
+	font-size: 12px;
+}
+
+.chagency-detail summary {
+	cursor: pointer;
+	opacity: 0.7;
+}
+
+.chagency-detail p {
+	margin: 6px 0 0;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 11px;
+	line-height: 1.5;
+	word-break: break-word;
+	opacity: 0.85;
+}
+
+.chagency-retry {
+	display: inline-block;
+	margin-top: 8px;
+	padding: 3px 10px;
+	border: 1px solid currentcolor;
+	border-radius: 12px;
+	background: transparent;
+	color: inherit;
+	font-size: 12px;
+	cursor: pointer;
+	opacity: 0.85;
+}
+
+.chagency-retry:hover {
+	opacity: 1;
+}
+
+/* ============================================================
    Floating widget, surface-aware accent
    ============================================================ */
 

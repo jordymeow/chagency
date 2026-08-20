@@ -118,7 +118,29 @@ function Launcher( { onOpen, unreadCount, label } ) {
 	);
 }
 
-function Bubble( { from, body, tone } ) {
+function Steps( { steps } ) {
+	if ( ! Array.isArray( steps ) || steps.length === 0 ) {
+		return null;
+	}
+	return (
+		<div className="chagency-steps">
+			{ steps.map( ( step, i ) => (
+				<span
+					key={ `${ step.ability }-${ i }` }
+					className={
+						step.ok
+							? 'chagency-step'
+							: 'chagency-step chagency-step--failed'
+					}
+				>
+					{ step.ability }
+				</span>
+			) ) }
+		</div>
+	);
+}
+
+function Bubble( { from, body, tone, steps, detail, onRetry } ) {
 	if ( tone === 'pending' ) {
 		return (
 			<div className="chagency-bubble chagency-bubble--assistant chagency-bubble--pending">
@@ -141,6 +163,22 @@ function Bubble( { from, body, tone } ) {
 			) : (
 				<Markdown options={ MARKDOWN_OPTIONS }>{ body || '' }</Markdown>
 			) }
+			<Steps steps={ steps } />
+			{ detail ? (
+				<details className="chagency-detail">
+					<summary>{ __( 'Details', 'chagency' ) }</summary>
+					<p>{ detail }</p>
+				</details>
+			) : null }
+			{ tone === 'error' && onRetry ? (
+				<button
+					type="button"
+					className="chagency-retry"
+					onClick={ onRetry }
+				>
+					{ __( 'Try again', 'chagency' ) }
+				</button>
+			) : null }
 		</div>
 	);
 }
@@ -199,12 +237,11 @@ export default function Widget( { cfg } ) {
 	const enabled = !! settings[ enabledKey ];
 	const greeting = settings.greeting || '';
 
-	const { messages, append, reset, unreadCount, markSeen } = useConversation(
-		{
+	const { messages, append, dropLast, reset, unreadCount, markSeen } =
+		useConversation( {
 			storageKey: cfg.storageKey,
 			greeting,
-		}
-	);
+		} );
 
 	// Panel open state persists across admin navigations via sessionStorage.
 	const [ open, setOpenState ] = useState( () => readOpenState( surface ) );
@@ -282,47 +319,103 @@ export default function Widget( { cfg } ) {
 		el.style.height = Math.min( el.scrollHeight, 120 ) + 'px';
 	}, [ input ] );
 
+	// The greeting is local-only, and an error bubble is our own text, not
+	// something the assistant said. Neither belongs in what we replay.
+	const toWire = useCallback(
+		( history ) =>
+			history
+				.filter(
+					( m ) =>
+						m.tone !== 'greeting' &&
+						m.tone !== 'error' &&
+						( m.role === 'user' || m.role === 'assistant' )
+				)
+				.map( ( m ) => ( { role: m.role, content: m.content } ) ),
+		[]
+	);
+
+	const send = useCallback(
+		( wire ) => {
+			setBusy( true );
+			return sendChat( wire )
+				.then( ( data ) => {
+					const reply =
+						data && typeof data.reply === 'string'
+							? data.reply
+							: '';
+					if ( ! reply ) {
+						append( {
+							role: 'assistant',
+							content: __(
+								'The model returned an empty answer. Try rephrasing.',
+								'chagency'
+							),
+							tone: 'error',
+						} );
+						return;
+					}
+					append( {
+						role: 'assistant',
+						content: reply,
+						steps: Array.isArray( data.steps )
+							? data.steps
+							: undefined,
+					} );
+				} )
+				.catch( ( err ) => {
+					const msg =
+						( err && err.message ) ||
+						__( 'Something went wrong.', 'chagency' );
+					// The provider's own wording, kept for admins only: it is
+					// the useful half when debugging a key or a model name.
+					const detail =
+						surface === 'admin' &&
+						err &&
+						err.data &&
+						err.data.data &&
+						err.data.data.detail
+							? String( err.data.data.detail )
+							: undefined;
+					append( {
+						role: 'assistant',
+						content: msg,
+						tone: 'error',
+						detail,
+					} );
+				} )
+				.finally( () => setBusy( false ) );
+		},
+		[ append, surface ]
+	);
+
 	const handleSend = useCallback( () => {
 		const text = ( input || '' ).trim();
 		if ( ! text || busy ) {
 			return;
 		}
 		const userMsg = { role: 'user', content: text };
-		const wire = messages
-			.filter(
-				( m ) =>
-					m.tone !== 'greeting' &&
-					( m.role === 'user' || m.role === 'assistant' )
-			)
-			.map( ( m ) => ( { role: m.role, content: m.content } ) );
+		const wire = toWire( messages );
 		wire.push( userMsg );
 
 		append( userMsg );
 		setInput( '' );
-		setBusy( true );
+		send( wire );
+	}, [ input, messages, busy, append, send, toWire ] );
 
-		sendChat( wire )
-			.then( ( data ) => {
-				const reply =
-					data && typeof data.reply === 'string' ? data.reply : '';
-				if ( ! reply ) {
-					append( {
-						role: 'assistant',
-						content: __( '(empty reply)', 'chagency' ),
-						tone: 'error',
-					} );
-					return;
-				}
-				append( { role: 'assistant', content: reply } );
-			} )
-			.catch( ( err ) => {
-				const msg =
-					( err && err.message ) ||
-					__( 'Something went wrong.', 'chagency' );
-				append( { role: 'assistant', content: msg, tone: 'error' } );
-			} )
-			.finally( () => setBusy( false ) );
-	}, [ input, messages, busy, append ] );
+	// Retry drops the error bubble and replays the conversation as it stood
+	// before the failure, so the user never retypes anything.
+	const handleRetry = useCallback( () => {
+		if ( busy ) {
+			return;
+		}
+		const history = messages.slice( 0, -1 );
+		const wire = toWire( history );
+		if ( wire.length === 0 || wire[ wire.length - 1 ].role !== 'user' ) {
+			return;
+		}
+		dropLast();
+		send( wire );
+	}, [ messages, busy, dropLast, send, toWire ] );
 
 	const onKeyDown = ( e ) => {
 		if ( e.key === 'Enter' && ! e.shiftKey ) {
@@ -401,6 +494,13 @@ export default function Widget( { cfg } ) {
 								from={ m.role }
 								body={ m.content }
 								tone={ m.tone }
+								steps={ m.steps }
+								detail={ m.detail }
+								onRetry={
+									i === messages.length - 1
+										? handleRetry
+										: undefined
+								}
 							/>
 						) ) }
 						{ busy ? (
