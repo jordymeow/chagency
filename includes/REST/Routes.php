@@ -6,6 +6,7 @@
  *   POST /chagency/v1/chat       , generate a reply for a conversation
  *   POST /chagency/v1/test       , canary probe against a specific provider
  *   GET  /chagency/v1/connectors , connector status (used by the React UI)
+ *   GET  /chagency/v1/abilities  , every registered ability (used by the React UI)
  *   GET  /chagency/v1/settings   , current settings
  *   POST /chagency/v1/settings   , persist new settings
  *
@@ -24,10 +25,13 @@ use WP_REST_Response;
 use WP_REST_Server;
 
 use function Chagency\admin_permission_check;
+use function Chagency\agent_abilities;
 use function Chagency\chat_permission_check;
 use function Chagency\expand_placeholders;
 use function Chagency\get_plugin_settings;
+use function Chagency\list_abilities;
 use function Chagency\list_connectors_status;
+use function Chagency\sanitize_ability_names;
 use function Chagency\sanitize_settings;
 
 defined( 'ABSPATH' ) || exit;
@@ -122,6 +126,18 @@ class Routes {
 
 		register_rest_route(
 			self::NAMESPACE,
+			'/abilities',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => static fn(): WP_REST_Response => new WP_REST_Response( list_abilities() ),
+					'permission_callback' => $admin,
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
 			'/settings',
 			array(
 				array(
@@ -140,6 +156,11 @@ class Routes {
 						'system_instruction' => array( 'type' => 'string' ),
 						'greeting'           => array( 'type' => 'string' ),
 						'model_preference'   => array( 'type' => 'string' ),
+						'abilities_enabled'  => array( 'type' => 'boolean' ),
+						'abilities'          => array(
+							'type'  => 'array',
+							'items' => array( 'type' => 'string' ),
+						),
 					),
 				),
 				array(
@@ -224,24 +245,12 @@ class Routes {
 		$template     = $options['system_instruction'] ?? $settings['system_instruction'];
 		$options['system_instruction'] = expand_placeholders( (string) $template, $page_context );
 
-		$builder = AI_Service::get_instance()->create_chat_prompt( (string) $last['content'], $history, $options );
-		if ( is_wp_error( $builder ) ) {
-			return $builder;
-		}
+		// Abilities the assistant may call on this request. Empty unless the
+		// feature is on and the caller can manage options, see `agent_abilities()`.
+		$options['abilities'] = agent_abilities();
 
 		try {
-			if ( ! $builder->is_supported_for_text_generation() ) {
-				return new WP_Error(
-					'chagency_unsupported',
-					__( 'No configured AI provider can generate text right now.', 'chagency' ),
-					array( 'status' => 503 )
-				);
-			}
-			$reply = $builder->generate_text();
-			if ( is_wp_error( $reply ) ) {
-				return $reply;
-			}
-			return new WP_REST_Response( array( 'reply' => (string) $reply ) );
+			$result = AI_Service::get_instance()->generate_chat_reply( (string) $last['content'], $history, $options );
 		} catch ( Throwable $t ) {
 			return new WP_Error(
 				'chagency_unexpected_error',
@@ -249,6 +258,12 @@ class Routes {
 				array( 'status' => 500 )
 			);
 		}
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return new WP_REST_Response( $result );
 	}
 
 	/**
@@ -290,6 +305,8 @@ class Routes {
 			'system_instruction' => (string) $request->get_param( 'system_instruction' ),
 			'greeting'           => (string) $request->get_param( 'greeting' ),
 			'model_preference'   => (string) $request->get_param( 'model_preference' ),
+			'abilities_enabled'  => (bool) $request->get_param( 'abilities_enabled' ),
+			'abilities'          => sanitize_ability_names( $request->get_param( 'abilities' ) ),
 		);
 		$sanitized = sanitize_settings( $input );
 		update_option( \Chagency\OPTION_KEY, $sanitized );

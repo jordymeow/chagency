@@ -59,6 +59,11 @@ class Settings_Registration {
 							'system_instruction' => array( 'type' => 'string' ),
 							'greeting'           => array( 'type' => 'string' ),
 							'model_preference'   => array( 'type' => 'string' ),
+							'abilities_enabled'  => array( 'type' => 'boolean' ),
+							'abilities'          => array(
+								'type'  => 'array',
+								'items' => array( 'type' => 'string' ),
+							),
 						),
 					),
 				),

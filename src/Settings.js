@@ -1,6 +1,6 @@
 /**
- * Settings → Chagency. Two cards: Chatbot (toggles + behaviour) and
- * Providers (status + test).
+ * Settings → Chagency. Three cards: Chatbot (toggles + behaviour),
+ * Abilities (what the assistant may call) and Providers (status + test).
  *
  * @package
  */
@@ -11,7 +11,9 @@ import {
 	CardBody,
 	CardFooter,
 	CardHeader,
+	CheckboxControl,
 	Notice,
+	SearchControl,
 	SelectControl,
 	TextControl,
 	TextareaControl,
@@ -28,6 +30,7 @@ import { useDispatch } from '@wordpress/data';
 import {
 	createInterpolateElement,
 	useCallback,
+	useMemo,
 	useState,
 } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
@@ -99,6 +102,117 @@ function ProviderRow( { connector, notice } ) {
 	);
 }
 
+function AbilityRow( { ability, checked, disabled, onToggle } ) {
+	return (
+		<div className="chagency-ability">
+			<CheckboxControl
+				__nextHasNoMarginBottom
+				label={ ability.label || ability.name }
+				checked={ checked }
+				disabled={ disabled }
+				onChange={ () => onToggle( ability.name ) }
+			/>
+			<div className="chagency-ability__meta">
+				<code>{ ability.name }</code>
+				{ ability.readonly ? (
+					<span className="chagency-badge chagency-badge--ok">
+						{ __( 'Read only', 'chagency' ) }
+					</span>
+				) : null }
+				{ ability.destructive ? (
+					<span className="chagency-badge chagency-badge--warn">
+						{ __( 'Destructive', 'chagency' ) }
+					</span>
+				) : null }
+			</div>
+			{ ability.description ? (
+				<Text variant="muted" size="13px">
+					{ ability.description }
+				</Text>
+			) : null }
+		</div>
+	);
+}
+
+// Above this many abilities the flat list stops being readable and a filter
+// earns its place. Core alone registers three, plugins can register dozens.
+const ABILITY_FILTER_THRESHOLD = 8;
+
+function AbilityList( { abilities, selected, disabled, onToggle } ) {
+	const [ search, setSearch ] = useState( '' );
+
+	const groups = useMemo( () => {
+		const needle = search.trim().toLowerCase();
+		const matches = needle
+			? abilities.filter(
+					( a ) =>
+						a.name.toLowerCase().includes( needle ) ||
+						( a.label || '' ).toLowerCase().includes( needle ) ||
+						( a.description || '' ).toLowerCase().includes( needle )
+			  )
+			: abilities;
+
+		const byCategory = new Map();
+		matches.forEach( ( ability ) => {
+			const key = ability.categoryLabel || ability.category;
+			if ( ! byCategory.has( key ) ) {
+				byCategory.set( key, [] );
+			}
+			byCategory.get( key ).push( ability );
+		} );
+		return Array.from( byCategory.entries() );
+	}, [ abilities, search ] );
+
+	const matchCount = groups.reduce(
+		( total, [ , items ] ) => total + items.length,
+		0
+	);
+
+	return (
+		<VStack spacing={ 4 }>
+			{ abilities.length > ABILITY_FILTER_THRESHOLD && (
+				<SearchControl
+					__nextHasNoMarginBottom
+					label={ __( 'Search abilities', 'chagency' ) }
+					value={ search }
+					onChange={ setSearch }
+				/>
+			) }
+			{ matchCount === 0 ? (
+				<Text variant="muted">
+					{ __( 'No ability matches that search.', 'chagency' ) }
+				</Text>
+			) : (
+				groups.map( ( [ category, items ] ) => (
+					<div key={ category } className="chagency-ability-group">
+						<Text
+							variant="muted"
+							size="11px"
+							weight="600"
+							upperCase
+						>
+							{ category }
+						</Text>
+						<VStack spacing={ 4 } className="chagency-abilities">
+							{ items.map( ( ability ) => (
+								<AbilityRow
+									key={ ability.name }
+									ability={ ability }
+									checked={ selected.includes(
+										ability.name
+									) }
+									disabled={ disabled }
+									onToggle={ onToggle }
+								/>
+							) ) }
+						</VStack>
+					</div>
+				) )
+			) }
+		</VStack>
+	);
+}
+
 function PlaceholderHelp( { placeholders } ) {
 	const entries = Object.entries( placeholders || {} );
 	if ( entries.length === 0 ) {
@@ -126,8 +240,11 @@ export default function Settings( { cfg } ) {
 		system_instruction: '',
 		greeting: '',
 		model_preference: 'auto',
+		abilities_enabled: false,
+		abilities: [],
 	};
 	const connectors = Array.isArray( cfg.connectors ) ? cfg.connectors : [];
+	const abilities = Array.isArray( cfg.abilities ) ? cfg.abilities : [];
 	const placeholders = cfg.placeholders || {};
 	const hasCredentials = !! cfg.hasCredentials;
 	const connectorsUrl = cfg.connectorsUrl || '';
@@ -147,6 +264,21 @@ export default function Settings( { cfg } ) {
 
 	const update = ( patch ) => {
 		setForm( ( prev ) => ( { ...prev, ...patch } ) );
+		setDirty( true );
+	};
+
+	const toggleAbility = ( name ) => {
+		setForm( ( prev ) => {
+			const current = Array.isArray( prev.abilities )
+				? prev.abilities
+				: [];
+			return {
+				...prev,
+				abilities: current.includes( name )
+					? current.filter( ( item ) => item !== name )
+					: [ ...current, name ],
+			};
+		} );
 		setDirty( true );
 	};
 
@@ -217,7 +349,7 @@ export default function Settings( { cfg } ) {
 		<Page
 			title={ __( 'Chagency', 'chagency' ) }
 			subTitle={ __(
-				'The first chatbot built natively on the WordPress 7 AI infrastructure.',
+				'A chatbot on the WordPress AI Client, an agent through the Abilities API.',
 				'chagency'
 			) }
 		>
@@ -351,6 +483,70 @@ export default function Settings( { cfg } ) {
 								>
 									{ __( 'Reset to defaults', 'chagency' ) }
 								</Button>
+								<Button
+									variant="primary"
+									onClick={ save }
+									isBusy={ saving }
+									disabled={ saving || resetting || ! dirty }
+								>
+									{ saving
+										? __( 'Saving…', 'chagency' )
+										: __( 'Save changes', 'chagency' ) }
+								</Button>
+							</HStack>
+						</CardFooter>
+					</Card>
+
+					<Card size="small">
+						<CardHeader>
+							<VStack spacing={ 1 }>
+								<Heading level={ 3 }>
+									{ __( 'Abilities', 'chagency' ) }
+								</Heading>
+								<Text variant="muted" size="13px">
+									{ __(
+										'Abilities are what turns the chatbot into an agent. WordPress runs each one for you, with its own permission check.',
+										'chagency'
+									) }
+								</Text>
+							</VStack>
+						</CardHeader>
+						<CardBody>
+							<VStack spacing={ 5 }>
+								<ToggleControl
+									__nextHasNoMarginBottom
+									label={ __(
+										'Let the assistant use abilities',
+										'chagency'
+									) }
+									help={ __(
+										'Only in the WordPress admin, and only for users who can manage options. The public widget never gets abilities.',
+										'chagency'
+									) }
+									checked={ !! form.abilities_enabled }
+									onChange={ ( next ) =>
+										update( { abilities_enabled: next } )
+									}
+								/>
+								{ abilities.length === 0 ? (
+									<Text variant="muted">
+										{ __(
+											'No abilities are registered on this site yet.',
+											'chagency'
+										) }
+									</Text>
+								) : (
+									<AbilityList
+										abilities={ abilities }
+										selected={ form.abilities || [] }
+										disabled={ ! form.abilities_enabled }
+										onToggle={ toggleAbility }
+									/>
+								) }
+							</VStack>
+						</CardBody>
+						<CardFooter>
+							<HStack justify="flex-end">
 								<Button
 									variant="primary"
 									onClick={ save }

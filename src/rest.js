@@ -55,6 +55,7 @@ export const saveSettings = ( payload ) =>
 export const resetSettings = () =>
 	apiRequest( '/settings', { method: 'DELETE' } );
 export const getConnectors = () => apiRequest( '/connectors' );
+export const getAbilities = () => apiRequest( '/abilities' );
 export const testProvider = ( provider ) =>
 	apiRequest( '/test', { body: { provider } } );
 

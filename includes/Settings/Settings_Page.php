@@ -25,6 +25,7 @@ namespace Chagency\Settings;
 use function Chagency\conversation_storage_key;
 use function Chagency\get_plugin_settings;
 use function Chagency\has_credentials;
+use function Chagency\list_abilities;
 use function Chagency\list_connectors_status;
 use function Chagency\supported_placeholders;
 
@@ -207,6 +208,7 @@ class Settings_Page {
 			'hasCredentials' => has_credentials(),
 			'settings'       => get_plugin_settings(),
 			'connectors'     => list_connectors_status(),
+			'abilities'      => list_abilities(),
 			'placeholders'   => supported_placeholders(),
 			'storageKey'     => conversation_storage_key(),
 		);

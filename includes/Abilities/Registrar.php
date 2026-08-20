@@ -72,9 +72,16 @@ class Registrar {
 				'execute_callback'    => array( self::class, 'execute' ),
 				'permission_callback' => static fn(): bool => current_user_can( 'manage_options' ),
 				'meta'                => array(
+					// `public` (WP 7.1) is the high-level flag: it seeds every
+					// per-channel flag, REST included, so MCP and agent clients
+					// see the ability too. `show_in_rest` stays for WP 7.0,
+					// where `public` does not exist yet.
+					'public'       => true,
 					'show_in_rest' => true,
 					'annotations'  => array(
-						'readonly' => false,
+						'readonly'    => false,
+						'destructive' => false,
+						'idempotent'  => false,
 					),
 				),
 			)

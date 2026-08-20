@@ -44,7 +44,7 @@ function default_chat_title(): string {
 /**
  * Returns the default settings shape.
  *
- * @return array{admin_enabled:bool,frontend_enabled:bool,chat_title:string,system_instruction:string,greeting:string,model_preference:string}
+ * @return array{admin_enabled:bool,frontend_enabled:bool,chat_title:string,system_instruction:string,greeting:string,model_preference:string,abilities_enabled:bool,abilities:list<string>}
  */
 function default_settings(): array {
 	return array(
@@ -54,6 +54,8 @@ function default_settings(): array {
 		'system_instruction' => default_system_instruction(),
 		'greeting'           => default_greeting(),
 		'model_preference'   => 'auto',
+		'abilities_enabled'  => false,
+		'abilities'          => array(),
 	);
 }
 
@@ -65,7 +67,7 @@ function default_settings(): array {
  * function. Plugin Check flags any `get_settings()` call regardless of
  * namespace.
  *
- * @return array{admin_enabled:bool,frontend_enabled:bool,chat_title:string,system_instruction:string,greeting:string,model_preference:string}
+ * @return array{admin_enabled:bool,frontend_enabled:bool,chat_title:string,system_instruction:string,greeting:string,model_preference:string,abilities_enabled:bool,abilities:list<string>}
  */
 function get_plugin_settings(): array {
 	$stored = get_option( OPTION_KEY, array() );
@@ -74,9 +76,11 @@ function get_plugin_settings(): array {
 	}
 	$out = array_merge( default_settings(), $stored );
 
-	$out['admin_enabled']    = (bool) $out['admin_enabled'];
-	$out['frontend_enabled'] = (bool) $out['frontend_enabled'];
-	$out['model_preference'] = is_string( $out['model_preference'] ) && '' !== $out['model_preference']
+	$out['admin_enabled']     = (bool) $out['admin_enabled'];
+	$out['frontend_enabled']  = (bool) $out['frontend_enabled'];
+	$out['abilities_enabled'] = (bool) $out['abilities_enabled'];
+	$out['abilities']         = is_array( $out['abilities'] ) ? array_values( array_filter( $out['abilities'], 'is_string' ) ) : array();
+	$out['model_preference']  = is_string( $out['model_preference'] ) && '' !== $out['model_preference']
 		? $out['model_preference']
 		: 'auto';
 
@@ -108,7 +112,36 @@ function sanitize_settings( $input ): array {
 	$model = isset( $input['model_preference'] ) ? sanitize_text_field( (string) $input['model_preference'] ) : '';
 	$out['model_preference'] = '' !== $model ? $model : 'auto';
 
+	$out['abilities_enabled'] = ! empty( $input['abilities_enabled'] );
+	$out['abilities']         = sanitize_ability_names( $input['abilities'] ?? array() );
+
 	return $out;
+}
+
+/**
+ * Keeps only well-formed ability names.
+ *
+ * Core requires lowercase, namespaced names such as `core/get-site-info`, so
+ * anything else can never match a registered ability and is dropped here.
+ *
+ * @param mixed $names Raw list of ability names.
+ * @return list<string>
+ */
+function sanitize_ability_names( $names ): array {
+	if ( ! is_array( $names ) ) {
+		return array();
+	}
+	$out = array();
+	foreach ( $names as $name ) {
+		if ( ! is_string( $name ) ) {
+			continue;
+		}
+		$name = trim( $name );
+		if ( 1 === preg_match( '#^[a-z0-9\-]+/[a-z0-9\-]+$#', $name ) ) {
+			$out[] = $name;
+		}
+	}
+	return array_values( array_unique( $out ) );
 }
 
 /**
@@ -178,10 +211,7 @@ function default_model_preferences(): array {
 /**
  * Returns true when an api_key connector has its key available from any source
  * WordPress 7 recognises: an environment variable, a PHP constant, or the saved
- * option. Mirrors core's get_connector_api_key_source() (WP-ai 1.0.1, PR #603) so
- * the launcher stays visible when a key is supplied via env var or constant, not
- * only via the option. On older cores the env/constant keys are simply absent and
- * we fall through to the option, preserving prior behaviour.
+ * option, in that order, matching core's own `_wp_connectors_get_api_key_source()`.
  *
  * @param array<string,mixed> $auth A connector's `authentication` array.
  */
@@ -205,6 +235,52 @@ function api_key_connector_has_credentials( array $auth ): bool {
 }
 
 /**
+ * Returns true when an `application_password` connector (WP 7.1) has both a
+ * username and a password available. Core resolves env var, constant and
+ * option in that order, so we just ask it.
+ *
+ * @param array<string,mixed> $auth A connector's `authentication` array.
+ */
+function application_password_connector_has_credentials( array $auth ): bool {
+	if ( ! function_exists( 'wp_connectors_get_application_password_credentials' ) ) {
+		return false;
+	}
+	$credentials = wp_connectors_get_application_password_credentials( $auth );
+	return ! empty( $credentials['username'] ) && ! empty( $credentials['password'] );
+}
+
+/**
+ * Returns true when a connector has credentials available.
+ *
+ * Deliberately does NOT ask the AI Client registry. `isProviderConfigured()`
+ * looks like the right call (it is what core's Connectors screen uses) but it
+ * probes the provider over the network: the `ListModels` strategy performs an
+ * HTTP request, cached for a day, and the `GenerateText` strategy fires a real,
+ * billed generation request with no caching at all. Core can afford that on one
+ * settings screen. `has_credentials()` gates the launcher on *every* admin page
+ * load, and on every front-end page when the public widget is on, so it must
+ * stay pure local reads.
+ *
+ * Unknown auth methods are treated as configured: a future WordPress may add
+ * one we cannot read, and a launcher that appears and then reports a provider
+ * error is a better failure than a launcher that silently never appears.
+ *
+ * @param array<string,mixed> $data Connector data from `wp_get_connectors()`.
+ */
+function connector_is_configured( array $data ): bool {
+	$auth   = is_array( $data['authentication'] ?? null ) ? $data['authentication'] : array();
+	$method = (string) ( $auth['method'] ?? 'none' );
+
+	if ( 'api_key' === $method ) {
+		return api_key_connector_has_credentials( $auth );
+	}
+	if ( 'application_password' === $method ) {
+		return application_password_connector_has_credentials( $auth );
+	}
+	return true;
+}
+
+/**
  * Returns true if at least one AI provider is configured.
  */
 function has_credentials(): bool {
@@ -215,11 +291,7 @@ function has_credentials(): bool {
 		if ( ! is_array( $data ) || 'ai_provider' !== ( $data['type'] ?? '' ) ) {
 			continue;
 		}
-		$auth = $data['authentication'] ?? array();
-		if ( 'api_key' !== ( $auth['method'] ?? '' ) ) {
-			return true;
-		}
-		if ( api_key_connector_has_credentials( $auth ) ) {
+		if ( connector_is_configured( $data ) ) {
 			return true;
 		}
 	}
@@ -240,22 +312,95 @@ function list_connectors_status(): array {
 		if ( ! is_array( $data ) || 'ai_provider' !== ( $data['type'] ?? '' ) ) {
 			continue;
 		}
-		$auth          = $data['authentication'] ?? array();
-		$method        = (string) ( $auth['method'] ?? 'none' );
-		$is_configured = 'api_key' === $method
-			? api_key_connector_has_credentials( $auth )
-			: true;
+		$auth  = is_array( $data['authentication'] ?? null ) ? $data['authentication'] : array();
 		$out[] = array(
 			'id'           => (string) $id,
 			'name'         => (string) ( $data['name'] ?? $id ),
-			'method'       => $method,
-			'isConfigured' => $is_configured,
+			'method'       => (string) ( $auth['method'] ?? 'none' ),
+			'isConfigured' => connector_is_configured( $data ),
 		);
 	}
 	usort(
 		$out,
 		static fn( array $a, array $b ): int => strcasecmp( $a['name'], $b['name'] )
 	);
+	return $out;
+}
+
+/**
+ * Returns every registered ability, described for the settings UI.
+ *
+ * Permissions are deliberately not evaluated here: an ability's
+ * `permission_callback` runs at execution time, inside core, for the user who
+ * is actually chatting. This list only decides what an administrator may
+ * offer to the assistant.
+ *
+ * @return list<array{name:string,label:string,description:string,category:string,categoryLabel:string,readonly:bool,destructive:bool}>
+ */
+function list_abilities(): array {
+	$out = array();
+	if ( ! function_exists( 'wp_get_abilities' ) ) {
+		return $out;
+	}
+
+	$category_labels = array();
+	if ( function_exists( 'wp_get_ability_categories' ) ) {
+		foreach ( wp_get_ability_categories() as $slug => $category ) {
+			$category_labels[ (string) $slug ] = $category->get_label();
+		}
+	}
+
+	foreach ( wp_get_abilities() as $ability ) {
+		$annotations = $ability->get_meta_item( 'annotations', array() );
+		$annotations = is_array( $annotations ) ? $annotations : array();
+		$category    = $ability->get_category();
+
+		$out[] = array(
+			'name'          => $ability->get_name(),
+			'label'         => $ability->get_label(),
+			'description'   => $ability->get_description(),
+			'category'      => $category,
+			'categoryLabel' => (string) ( $category_labels[ $category ] ?? $category ),
+			'readonly'      => ! empty( $annotations['readonly'] ),
+			'destructive'   => ! empty( $annotations['destructive'] ),
+		);
+	}
+
+	usort(
+		$out,
+		static fn( array $a, array $b ): int => strcasecmp( $a['name'], $b['name'] )
+	);
+	return $out;
+}
+
+/**
+ * Returns the abilities the assistant may call for the current request.
+ *
+ * Empty unless the feature is on, the current user can manage options, and the
+ * abilities are still registered. Keeping this admin-only means the public
+ * widget never advertises the site's abilities to anonymous visitors, on top of
+ * the per-ability permission checks core runs anyway.
+ *
+ * @return list<string>
+ */
+function agent_abilities(): array {
+	$settings = get_plugin_settings();
+	if ( empty( $settings['abilities_enabled'] ) || empty( $settings['abilities'] ) ) {
+		return array();
+	}
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return array();
+	}
+	if ( ! function_exists( 'wp_has_ability' ) ) {
+		return array();
+	}
+
+	$out = array();
+	foreach ( sanitize_ability_names( $settings['abilities'] ) as $name ) {
+		if ( wp_has_ability( $name ) ) {
+			$out[] = $name;
+		}
+	}
 	return $out;
 }
 
