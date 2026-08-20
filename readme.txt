@@ -2,29 +2,30 @@
 Contributors: TigrouMeow
 Tags: ai, chatbot, agent, connectors, abilities
 Requires at least: 7.0
-Tested up to: 7.0
+Tested up to: 7.1
 Stable tag: 0.0.4
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-The first chatbot built natively on the WordPress 7 AI Client. No bundled SDKs, no third-party JavaScript, no telemetry.
+A chatbot built natively on the WordPress AI Client, and an agent through the Abilities API. No bundled SDKs, no telemetry.
 
 == Description ==
 
-**Chagency** is the first chatbot to ship directly on top of the new AI Client introduced in WordPress 7.0 — `wp_ai_client_prompt()`, Connectors, and the Abilities API. Every prompt flows through WordPress core, every provider is a Connector you already configured under **Settings → Connectors**, and every action it exposes is a registered Ability that other plugins (and other AI agents) can call.
+**Chagency** is built directly on the AI Client that shipped in WordPress 7.0: `wp_ai_client_prompt()`, Connectors, and the Abilities API. Every prompt flows through WordPress core, every provider is a Connector you already configured under **Settings → Connectors**, and the assistant can call the abilities your site registers.
 
-There is no other plugin on wordpress.org that builds on `wp_ai_client_prompt()` today. Chagency is the reference case: a small, native chatbot that proves the framework works, ships zero vendor SDKs, and grows alongside the Abilities API into a real agent.
+That last part is what makes it an agent rather than a chat box. Tick the abilities you want it to reach, and the model can use them mid-conversation to answer you: WordPress converts each one into a tool the model understands, runs it, and checks that ability's own permissions first. Ask "what's my site running on?" and it goes and looks, instead of guessing.
 
-It runs in the WordPress admin and, when you turn it on, on every page of your public site. The name (chat + ai + ency) is meant as a small bridge between the new AI primitives shipped with WordPress and the broader world of chat and agents. It starts as a chatbot today and turns into an agent tomorrow, without a rename.
+It runs in the WordPress admin and, when you turn it on, on every page of your public site. The name (chat + ai + ency) is meant as a small bridge between the new AI primitives shipped with WordPress and the broader world of chat and agents.
 
 == 🪨 Built on WordPress, period ==
 
 Chagency relies entirely on what WordPress 7 ships in core:
 
 * `wp_ai_client_prompt()`, the AI Client API.
+* `using_abilities()` and `WP_AI_Client_Ability_Function_Resolver`, core's own tool-calling bridge.
 * `wp_get_connectors()`, the Connectors API.
-* `wp_register_ability()` / `wp_get_ability()`, the Abilities API.
+* `wp_register_ability()` / `wp_get_ability()` / `wp_get_abilities()`, the Abilities API.
 * `@wordpress/components`, `@wordpress/element`, `@wordpress/boot`, the Gutenberg toolkit.
 
 That is the entire dependency surface. **No bundled AI vendor SDKs, no third-party JavaScript libraries beyond the Gutenberg stack, no telemetry, no phone-home.** The plugin stays small on purpose: fewer moving parts means less friction, fewer security holes, less to break when WordPress, browsers, or providers change.
@@ -36,10 +37,12 @@ You will need at least one AI provider plugin (e.g. *AI Provider for Anthropic*,
 == 🪄 What you get ==
 
 * A floating chat panel pinned to the bottom-right of every page (admin and / or public site, controlled by two independent toggles).
-* A single settings page under **Settings → Chagency**, with the bare minimum: where to show the chatbot, the chat title, the greeting, the system instruction, and the model preference.
+* A single settings page under **Settings → Chagency**, with the bare minimum: where to show the chatbot, the chat title, the greeting, the system instruction, the model preference, and which abilities the assistant may use.
+* Abilities, opt-in one by one. Every ability registered on your site (by core, by Chagency, by any other plugin) can be handed to the assistant, and each call is shown under the reply so you can see what it actually did.
 * Live updates: flipping a toggle in Settings shows or hides the launcher immediately on the same page, no reload needed.
 * Per-provider **Test** buttons that fire a canary prompt and report round-trip time.
 * Conversation persistence in your browser's localStorage, scoped per user.
+* Failures explained in plain words (rejected key, rate limit, provider down, conversation too long) with a *Try again* button, so a hiccup never costs you what you typed.
 * Placeholder expansion (`{user_name}`, `{site_name}`, `{current_page}`, `{current_url}`, `{user_role}`, `{site_url}`) so the assistant always knows who and where it is.
 * Exposed as an Ability (`chagency/send-message`) so other plugins, MCP clients, and AI agents can invoke Chagency directly.
 
@@ -58,7 +61,19 @@ It's a portmanteau of *chat*, *AI*, and a bit of *agent*. Not "agency" in the se
 
 = Does it need WordPress 7? =
 
-Yes. It uses `wp_ai_client_prompt()`, `wp_get_connectors()`, and the Abilities API, all added in WordPress 7.0. On older versions it refuses to boot and tells you why.
+Yes. It uses `wp_ai_client_prompt()`, `wp_get_connectors()`, and the Abilities API, all added in WordPress 7.0. On older versions it refuses to boot and tells you why. WordPress 7.1 is recommended.
+
+= How do abilities work, and is it safe? =
+
+Open **Settings → Chagency**, turn on *Let the assistant use abilities*, then tick the ones you want to allow. Nothing is allowed by default.
+
+Three things keep it tight. Only the abilities you ticked are ever offered to the model. WordPress runs each ability itself and checks that ability's own `permission_callback` for the person chatting, so the assistant can never do more than that user could. And abilities are admin-only: the public widget never gets them, even when you turn the public site on.
+
+Each reply lists the abilities it used, so nothing happens off-screen.
+
+= Which abilities can it use? =
+
+Whatever is registered on your site. WordPress ships `core/get-site-info`, `core/get-user-info` and `core/get-environment-info`, and any plugin can register more. They all show up in the list.
 
 = Which AI providers are supported? =
 
@@ -78,8 +93,9 @@ Yes. The `chagency/send-message` Ability is registered on `wp_abilities_api_init
 
 == Screenshots ==
 
-1. The floating chat panel open on an admin page, native WP 7 Gutenberg look.
-2. The settings screen under **Settings → Chagency**, with per-provider *Test* buttons.
+1. The floating chat panel answering a question on a WordPress admin screen, with the native WP 7 look.
+2. The single settings screen under **Settings → Chagency**: where to show the chatbot, its title, greeting, system instruction, and model.
+3. Flip one toggle and the same chat panel runs on the public side of your site, for every visitor.
 
 == Source code ==
 
