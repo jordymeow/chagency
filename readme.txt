@@ -3,8 +3,8 @@ Contributors: TigrouMeow
 Tags: ai, chatbot, agent, connectors, abilities
 Requires at least: 7.0
 Tested up to: 7.1
-Stable tag: 0.0.4
-Requires PHP: 7.4
+Stable tag: 0.0.5
+Requires PHP: 8.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -108,6 +108,14 @@ To rebuild from source:
 The build is `@wordpress/scripts` (webpack) with no custom plugins or transforms.
 
 == Changelog ==
+
+= 0.0.5 (2026/08/20) =
+* Add: Abilities support — the assistant can use the ones you allow and shows which it called.
+* Add: Try again button on failed messages, with provider errors explained in plain language.
+* Update: Aligned with WordPress 7.1, including the new public ability meta and application-password connectors.
+* Update: Limit how much of a long conversation is replayed to the model.
+* Add: Test harness that checks the AI plumbing without a database.
+* 🌴 Keep us motivated with [a little review here](https://wordpress.org/support/plugin/chagency/reviews/). Thank you!
 
 = 0.0.4 (2026/06/03) =
 * Fix: Chat launcher now appears when the AI provider key is set via an environment variable or constant, not only when saved through the settings page.
