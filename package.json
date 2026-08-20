@@ -29,6 +29,7 @@
 	],
 	"scripts": {
 		"build": "wp-scripts build",
+		"test": "php tests/run.php",
 		"start": "wp-scripts start",
 		"plugin-zip": "wp-scripts plugin-zip",
 		"lint:js": "wp-scripts lint-js",
